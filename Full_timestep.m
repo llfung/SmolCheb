@@ -23,7 +23,7 @@ settings.e1=sin(settings.theta)*cos(settings.phi);
 settings.e2=cos(settings.theta)*ones(size(settings.phi));
 settings.e3=sin(settings.theta)*sin(settings.phi);
 
-settings.N_mesh=5;
+settings.N_mesh=1;
 
 t_default=[0 16];
 
@@ -47,12 +47,12 @@ fi_col=reshape(fi,settings.n_phi*(settings.n_theta-2)*settings.N_mesh,1);
 %     ones(settings.n_phi,settings.n_phi))...
 %     );
 J = kron( spdiags(ones(settings.N_mesh,7),-3:3,settings.N_mesh,settings.N_mesh),...
-    kron( spdiags(ones(settings.n_theta-2,5),-2:2,...
+    kron( spdiags(ones(settings.n_theta-2,3),-1:1,...
     settings.n_theta-2,settings.n_theta-2),...
     ones(settings.n_phi,settings.n_phi))...
     );
 %% Initialisation
-settings.K_p=100;
+settings.K_p=0;
 
 settings.S=2.5;
 
@@ -72,17 +72,22 @@ opt=odeset('RelTol',1e-4/3,'AbsTol',1e-13,'JPattern',J,'NormControl','off','MaxS
     f=NaN(settings.n_theta,settings.n_phi,settings.N_mesh);
     for i=1:settings.N_mesh
         f_theta_0=ones(1,settings.n_phi)*mean(18*f_wobc((i-1)*n_theta_wobc+1,:)-9*f_wobc((i-1)*n_theta_wobc+2,:)+2*f_wobc((i-1)*n_theta_wobc+3,:))/11;
-        f_theta_n=ones(1,settings.n_phi)*mean(18*f_wobc(    i*n_theta_wobc-1,:)-9*f_wobc(    i*n_theta_wobc-2,:)+2*f_wobc(    i*n_theta_wobc-3,:))/11;
+        f_theta_n=ones(1,settings.n_phi)*mean(18*f_wobc(    i*n_theta_wobc  ,:)-9*f_wobc(    i*n_theta_wobc-1,:)+2*f_wobc(    i*n_theta_wobc-2,:))/11;
         f(:,:,i)=[f_theta_0;f_wobc((i-1)*n_theta_wobc+1:i*n_theta_wobc,:);f_theta_n];
     end
     
 toc
-    Sf=NaN(size(t_sol));
+    Sf=NaN(size(t_sol));i=1;
     for j=1:length(t_sol)
         f_wobc=transpose(reshape(f_sol(j,:),settings_loc.n_phi,settings.N_mesh*(settings_loc.n_theta-2)));
-        f_theta_0=ones(1,settings.n_phi)*mean(18*f_wobc((i-1)*n_theta_wobc+1,:)-9*f_wobc((i-1)*n_theta_wobc+2,:)+2*f_wobc((i-1)*n_theta_wobc+3,:))/11;
-        f_theta_n=ones(1,settings.n_phi)*mean(18*f_wobc(    i*n_theta_wobc-1,:)-9*f_wobc(    i*n_theta_wobc-2,:)+2*f_wobc(    i*n_theta_wobc-3,:))/11;
+        f_theta_0=ones(1,settings.n_phi)*mean(4*f_wobc((i-1)*n_theta_wobc+1,:)-f_wobc((i-1)*n_theta_wobc+2,:))/3;
+        f_theta_n=ones(1,settings.n_phi)*mean(4*f_wobc(    i*n_theta_wobc  ,:)-f_wobc(    i*n_theta_wobc-1,:))/3;
         f_t=[f_theta_0;f_wobc((i-1)*n_theta_wobc+1:i*n_theta_wobc,:);f_theta_n];
+
+        
+%         f_theta_0=ones(1,settings.n_phi)*mean(18*f_wobc((i-1)*n_theta_wobc+1,:)-9*f_wobc((i-1)*n_theta_wobc+2,:)+2*f_wobc((i-1)*n_theta_wobc+3,:))/11;
+%         f_theta_n=ones(1,settings.n_phi)*mean(18*f_wobc(    i*n_theta_wobc  ,:)-9*f_wobc(    i*n_theta_wobc-1,:)+2*f_wobc(    i*n_theta_wobc-2,:))/11;
+%         f_t=[f_theta_0;f_wobc((i-1)*n_theta_wobc+1:i*n_theta_wobc,:);f_theta_n];
         
         cf= forward_fft(f_t);
         Sf(j)=area(cf,settings.theta);
