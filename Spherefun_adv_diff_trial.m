@@ -11,10 +11,10 @@ e=spherefunv(@(x,y,z)x,@(x,y,z)y,@(x,y,z)z);
 dt = 0.01;                         % Time step
 tfinal = 3;                        % Stopping time
 nsteps = ceil(tfinal/dt);          % Number of time steps
-m = 20;                            % Spatial discretization
+m = 10;                            % Spatial discretization
 diff_const = 1;                      % Diffusion constant
-beta=2.2;
-S=2.5;
+beta=0;
+S=2;
 
 u=u0;
 zero_spherefun=spherefun(@(x,y,z)0);
