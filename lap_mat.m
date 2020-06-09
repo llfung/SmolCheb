@@ -1,0 +1,13 @@
+function Mlap=lap_mat(settings)
+    n=settings.n;
+    m=settings.m;
+    Mtheta2 = kron((spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n))\...
+        (spdiags((-n/2:n/2-1)'*1i,0, n, n)*...
+        spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)*...
+        spdiags((-n/2:n/2-1)'*1i,0, n, n)),speye(m));
+    
+    Mphi2 = kron((spdiags(.25*ones(n,1)*[-1,2,-1], [-2:2:2], n, n)\speye(n))...
+        ,spdiags(-((-m/2:m/2-1).^2)',0, m, m));
+    
+    Mlap=Mtheta2+Mphi2;
+end
