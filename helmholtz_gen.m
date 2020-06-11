@@ -27,7 +27,7 @@ function helm_mats = helmholtz_gen(m, n)
 % SOLVE COMPLEXITY:    O(M*N)  with M*N = total degrees of freedom
 
 % If the call is helmholtz(f, K, m), then set n
-if ( nargin < 4 )
+if ( nargin < 2 )
     n = m;
 end
 
