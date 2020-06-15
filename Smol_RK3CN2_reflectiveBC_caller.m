@@ -19,7 +19,7 @@ tfinal = 10;               % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 20;                     % Spaptial discretization - theta (even)
-N_mesh=100;                 % Spaptial discretization - y
+N_mesh=101;                 % Spaptial discretization - y
 diff_const = 1;             % Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
 % S=2.5;                      % Shear time scale
@@ -44,8 +44,8 @@ settings.omg3=omg(3);
 
 
 %% x-domain Meshing
-dx=2/(N_mesh);
-x=-1:dx:1-dx;
+dx=2/(N_mesh-1);
+x=-1:dx:1;
 
 %% Initial Condition (not recorded)
 settings.int_const=1.;
@@ -89,7 +89,9 @@ helm=helmholtz_gen( n, m);
 
 %Dx
 Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
-Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rdx);
+Rdx(:,1)=0;Rdx(:,N_mesh)=0;
+Rdx(1:7,     1)=[-49/20;6;-15/2;20/3;-15/4;6/5;-1/6];
+Rdx(N_mesh-6:N_mesh,N_mesh)=[1/6;-6/5;15/4;-20/3;15/2;-6;49/20];
 Rdx=Rdx/dx;
 
 %p1
@@ -109,22 +111,6 @@ adv_comb_coeff=zeros(n*m,N_mesh);
 for i = 1:nsteps
     %% RK step 1
     k=1;
-    % Complete Matrix Op Version
-    %     adv_coeff_mat=Mvor*((S_profile/2).*ucoeff)+Mgyro*ucoeff;
-    %     adv_coeff_mat=adv_coeff_mat-settings.Mint'*(settings.Mint*adv_coeff_mat)/settings.MintSq;
-    %     
-    %     lap_coeff_mat=Mlap*ucoeff;
-    %     lap_coeff_mat=lap_coeff_mat-settings.Mint'*(settings.Mint*lap_coeff_mat)/settings.MintSq;
-    %     
-    %     adv_p_coeff=adv_coeff_mat+Vc*Mp1*ucoeff*Rdx;
-    %     
-    %     parfor j=1:N_mesh
-    %         ucoeff(:,j) = helmholtz_cal(...
-    %             -K2/alpha(k)*ucoeff(:,j)-lap_coeff_mat(:,j)+1/diff_const/alpha(k)*(gamma(k)*(adv_p_coeff(:,j)))...
-    %             , -K2/alpha(k),helm);
-    %     end
-    
-    % Par-For Version
     dxu_coeff=ucoeff*Rdx;
     for j=1:N_mesh
         settings_loc=settings;
@@ -138,6 +124,24 @@ for i = 1:nsteps
         swim_coeff=Vc*Mp1*dxu_coeff(:,j);
         
         adv_p_coeff(:,j)=adv_coeff+swim_coeff;
+        if j==1 || j==N_mesh
+            adv_col=transpose(reshape(adv_p_coeff(:,j),m,n));
+            floorm=floor(m/2);
+            if mod(m,2)
+            for l=1:floorm
+                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
+                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
+            end
+            else
+                adv_col(:,1)=0;
+            for l=1:floorm-1
+                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
+                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
+            end       
+            end
+            adv_p_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
+        end
+        
         rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_p_coeff(:,j)));
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
     end
@@ -156,6 +160,23 @@ for i = 1:nsteps
         
         swim_coeff=Vc*Mp1*dxu_coeff(:,j);
         adv_comb_coeff(:,j)=adv_coeff+swim_coeff;
+        if j==1 || j==N_mesh
+            adv_col=transpose(reshape(adv_comb_coeff(:,j),m,n));
+            floorm=floor(m/2);
+            if mod(m,2)
+            for l=1:floorm
+                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
+                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
+            end
+            else
+                adv_col(:,1)=0;
+            for l=1:floorm-1
+                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
+                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
+            end       
+            end
+            adv_comb_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
+        end
         rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j)); %#ok<*PFBNS>
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
     end
@@ -174,8 +195,25 @@ for i = 1:nsteps
         lap_coeff=lap_coeff-settings_loc.Mint'*(settings_loc.Mint*lap_coeff)/settings_loc.MintSq;
         
         swim_coeff=Vc*Mp1*dxu_coeff(:,j);
-        
-        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_coeff+swim_coeff)+rho(k)*adv_p_coeff(:,j));
+        adv_comb_coeff(:,j)=adv_coeff+swim_coeff;
+        if j==1 || j==N_mesh
+            adv_col=transpose(reshape(adv_comb_coeff(:,j),m,n));
+            floorm=floor(m/2);
+            if mod(m,2)
+            for l=1:floorm
+                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
+                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
+            end
+            else
+                adv_col(:,1)=0;
+            for l=1:floorm-1
+                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
+                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
+            end       
+            end
+            adv_comb_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
+        end
+        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j));
         %     % Integral Compensation
         %     rhs_coeff = rhs_coeff-settings.Mint'*(settings.Mint*rhs_coeff-settings.int_const/2/pi*(-K2/alpha(k)))/settings.MintSq;
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
@@ -210,7 +248,7 @@ t2=dt*saving_rate2:dt*saving_rate2:tfinal;
 % figure;plot(t1,Nint);
 % figure;plot(x,Sf);
 
-save('smol_pBC_2-2beta_0-2Vc_0-4Pef_cospi.mat',...
+save('smol_rBC_2-2beta_0-2Vc_0-4Pef_cospi.mat',...
     't1','t2','Nint','cell_den','ufull_save','u_xloc_save','ucoeff','ucoeff0',...
     'settings','x_sav_location','x','dx','dt','diff_const','beta','tfinal',...
     'nsteps','S_profile','N_mesh','n','m','Vc','Pef','omg',...
@@ -221,14 +259,14 @@ save('smol_pBC_2-2beta_0-2Vc_0-4Pef_cospi.mat',...
 %% Translate back to Sphere for Post-Processing
 % u=spherefun.coeffs2spherefun(transpose(reshape(ucoeff(:,75),m,n)));
 % 
-n_phi=32; % Has to be even for FFT. 2^N recommended
-n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cot
-
-dtheta=(pi/(n_theta-1));
-dphi=2*pi/(n_phi);
-
-theta=(0:dtheta:pi)';
-phi=0:dphi:(2*pi-dphi);
+% n_phi=32; % Has to be even for FFT. 2^N recommended
+% n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cot
+% 
+% dtheta=(pi/(n_theta-1));
+% dphi=2*pi/(n_phi);
+% 
+% theta=(0:dtheta:pi)';
+% phi=0:dphi:(2*pi-dphi);
 % 
 % 
 % figure;
