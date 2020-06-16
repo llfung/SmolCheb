@@ -14,8 +14,8 @@
 clear all;
 %% Setting up
 % Parameters
-dt = 0.02;                  % Time step
-tfinal = 10;               % Stopping time
+dt = 0.0025;                  % Time step
+tfinal = 200;               % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 20;                     % Spaptial discretization - theta (even)
@@ -28,10 +28,11 @@ Pef=Vc*2;
 omg=[0,-1,0];                % Vorticity direction (1,2,3) 
 
 % Run saving settings
-saving_rate1=10;
-saving_rate2=50;
+saving_rate1=50;
+saving_rate2=200;
 
-x_sav_location=[1 11 21 26 31 41 51];
+% x_sav_location=[1 11 21 26 31 41 51];
+x_sav_location=[1 11 21 31 36 41 46 51];
 
 %Saving to settings struct
 % settings.S=S;
@@ -44,8 +45,12 @@ settings.omg3=omg(3);
 
 
 %% x-domain Meshing
-dx=2/(N_mesh-1);
-x=-1:dx:1;
+% dx=2/(N_mesh-1);
+% x=-1:dx:1;
+% cheb=chebyshev(N_mesh,2,bc_type.none,tran_type.tansc,0.5*pi);
+cheb=chebyshev(N_mesh,2,bc_type.none,tran_type.none);
+x=cheb.col_pt;
+D1=(cheb.D(1))';
 
 %% Initial Condition (not recorded)
 settings.int_const=1.;
@@ -53,8 +58,9 @@ ucoeff0=zeros(n*m,N_mesh);ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
 
 %% Shear Profile
 % W_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
-S_profile=pi*sin(pi*x)*Pef; % W(x)=-cos(pi x)-1
-S_profile(1)=0;
+% S_profile=pi*sin(pi*x)*Pef; % W(x)=-cos(pi x)-1
+% S_profile(1)=0;
+S_profile=2*x*Pef; % W(x)=-(1-x^2)
 
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
@@ -88,11 +94,12 @@ Mlap=lap_mat(settings);
 helm=helmholtz_gen( n, m);
 
 %Dx
-Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
-Rdx(:,1)=0;Rdx(:,N_mesh)=0;
-Rdx(1:7,     1)=[-49/20;6;-15/2;20/3;-15/4;6/5;-1/6];
-Rdx(N_mesh-6:N_mesh,N_mesh)=[1/6;-6/5;15/4;-20/3;15/2;-6;49/20];
-Rdx=Rdx/dx;
+% Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
+% Rdx(:,1)=0;Rdx(:,N_mesh)=0;
+% Rdx(1:7,     1)=[-49/20;6;-15/2;20/3;-15/4;6/5;-1/6];
+% Rdx(N_mesh-6:N_mesh,N_mesh)=[1/6;-6/5;15/4;-20/3;15/2;-6;49/20];
+% Rdx=Rdx/dx;
+Rdx=D1;
 
 %p1
 Mp1=kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
@@ -241,23 +248,26 @@ end
 
 
 %% Surface Integral Conservation check
-Nint=sum(cell_den,2)*dx;
+% Nint=(sum(cell_den,2)-cell_den(:,1)/2-cell_den(:,N_mesh)/2)*dx;
 t1=dt*saving_rate1:dt*saving_rate1:tfinal;
 t2=dt*saving_rate2:dt*saving_rate2:tfinal;
-
+Nint=NaN(size(t1));
+for i=1:length(t1)
+    Nint(i)=cheb.cheb_int(cell_den(i,:)');
+end
 % figure;plot(t1,Nint);
 % figure;plot(x,Sf);
 
-save('smol_rBC_2-2beta_0-2Vc_0-4Pef_cospi.mat',...
+save('smol_rBC_2-2beta_0-2Vc_0-4Pef_parabolic_cheb101.mat',...
     't1','t2','Nint','cell_den','ufull_save','u_xloc_save','ucoeff','ucoeff0',...
-    'settings','x_sav_location','x','dx','dt','diff_const','beta','tfinal',...
+    'settings','x_sav_location','x','dt','diff_const','beta','tfinal',...
     'nsteps','S_profile','N_mesh','n','m','Vc','Pef','omg',...
-    'saving_rate1','saving_rate2');
-% exit
+    'saving_rate1','saving_rate2','cheb');
+exit
 
 
 %% Translate back to Sphere for Post-Processing
-% u=spherefun.coeffs2spherefun(transpose(reshape(ucoeff(:,75),m,n)));
+% u=spherefun.coeffs2spherefun(transpose(reshape(ucoeff(:,1),m,n)));
 % 
 % n_phi=32; % Has to be even for FFT. 2^N recommended
 % n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cot
