@@ -1,7 +1,7 @@
 function Madv=adv_vor_mat(settings)
-persistent n m Msinncosm Msinnsinm Mcosn Mde1 Mde2 Mde3
-
-if isempty(n)
+% persistent n m Msinncosm Msinnsinm Mcosn Mde1 Mde2 Mde3
+% 
+% if isempty(n) || ~(settings.n==n && settings.m==m)
     
     n=settings.n;
     m=settings.m;
@@ -22,8 +22,7 @@ if isempty(n)
         spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)); % de2
     Mde3= -kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n),speye(m)); % de3
     
-end
-    
+% end
     
     vor1=(settings.omg2*Mcosn    -settings.omg3*Msinnsinm);
     vor2=(settings.omg3*Msinncosm-settings.omg1*Mcosn    );

@@ -1,7 +1,4 @@
 function Madv=adv_gyro_mat(settings)
-persistent n m Msinncosm Msinnsinm Mcosn Mde1 Mde2 Mde3
-
-if isempty(n)
     
     n=settings.n;
     m=settings.m;
@@ -21,8 +18,7 @@ if isempty(n)
         + kron(spdiags(.5*ones(n,1)*[1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n),...
         spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)); % de2
     Mde3= -kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n),speye(m)); % de3
-    
-end
+
     
     gyro1=-Mcosn*Msinncosm;
     gyro2=-Mcosn*Msinnsinm;
