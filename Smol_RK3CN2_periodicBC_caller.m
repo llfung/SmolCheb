@@ -14,12 +14,12 @@
 clear all;
 %% Setting up
 % Parameters
-dt = 0.02;                  % Time step
-tfinal = 10;               % Stopping time
+dt = 0.01;                  % Time step
+tfinal = 1;               % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 20;                     % Spaptial discretization - theta (even)
-N_mesh=100;                 % Spaptial discretization - y
+N_mesh=95;                 % Spaptial discretization - y
 diff_const = 1;             % Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
 % S=2.5;                      % Shear time scale
@@ -28,10 +28,10 @@ Pef=Vc*2;
 omg=[0,-1,0];                % Vorticity direction (1,2,3) 
 
 % Run saving settings
-saving_rate1=10;
-saving_rate2=50;
+saving_rate1=1;
+saving_rate2=100;
 
-x_sav_location=[1 11 21 26 31 41 51];
+x_sav_location=[1 11 21 33 24 3 42 45 48];
 
 %Saving to settings struct
 % settings.S=S;
@@ -50,12 +50,15 @@ x=-1:dx:1-dx;
 %% Initial Condition (not recorded)
 settings.int_const=1.;
 ucoeff0=zeros(n*m,N_mesh);ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
-
+% load('fv_ini.mat');
+% ucoeff0=ucoeff;
+% ucoeff0=reshape(transpose(fini),n*m,1)*ones(1,N_mesh)/2;
 %% Shear Profile
 % W_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
-S_profile=pi*sin(pi*x)*Pef; % W(x)=-cos(pi x)-1
+S_profile=pi*sin(pi*x)*Pef/2; % W(x)=-cos(pi x)-1
 S_profile(1)=0;
 
+% S_profile=Pef/2*ones(size(x)); %Homogeneous Shear
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
 gamma=[8/15 5/12 3/4];
@@ -126,10 +129,10 @@ for i = 1:nsteps
     
     % Par-For Version
     dxu_coeff=ucoeff*Rdx;
-    for j=1:N_mesh
+    parfor j=1:N_mesh
         settings_loc=settings;
         settings_loc.S=S_profile(j);
-        adv_coeff=(settings_loc.S/2)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
+        adv_coeff=(settings_loc.S)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
         adv_coeff=adv_coeff-settings_loc.Mint'*(settings_loc.Mint*adv_coeff)/settings_loc.MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
@@ -148,7 +151,7 @@ for i = 1:nsteps
         settings_loc=settings;
         settings_loc.S=S_profile(j);
 %         adv_p_coeff=adv_coeff+swim_coeff;
-        adv_coeff=(settings_loc.S/2)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
+        adv_coeff=(settings_loc.S)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
         adv_coeff=adv_coeff-settings_loc.Mint'*(settings_loc.Mint*adv_coeff)/settings_loc.MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
@@ -167,7 +170,7 @@ for i = 1:nsteps
         settings_loc=settings;
         settings_loc.S=S_profile(j);
         
-        adv_coeff=(settings_loc.S/2)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
+        adv_coeff=(settings_loc.S)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
         adv_coeff=adv_coeff-settings_loc.Mint'*(settings_loc.Mint*adv_coeff)/settings_loc.MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
@@ -189,6 +192,8 @@ for i = 1:nsteps
         end
         
         cell_den(i/saving_rate1,:)=real(settings.Mint*ucoeff*2*pi);
+        
+        disp([num2str(i) '/' num2str(nsteps)]);
     end
     
     %    Plot/Save the solution every saving_rate
@@ -210,26 +215,26 @@ t2=dt*saving_rate2:dt*saving_rate2:tfinal;
 % figure;plot(t1,Nint);
 % figure;plot(x,Sf);
 
-save('smol_pBC_2-2beta_0-2Vc_0-4Pef_cospi.mat',...
+save('smol_pBC_2-2beta_0-2Vc_0-4Pef_cospi_cd95_m16_n20_dt0-01_tf1_fvini.mat',...
     't1','t2','Nint','cell_den','ufull_save','u_xloc_save','ucoeff','ucoeff0',...
-    'settings','x_sav_location','x','dx','dt','diff_const','beta','tfinal',...
+    'settings','x_sav_location','x','dt','diff_const','beta','tfinal',...
     'nsteps','S_profile','N_mesh','n','m','Vc','Pef','omg',...
-    'saving_rate1','saving_rate2');
-% exit
+    'saving_rate1','saving_rate2','dx');
+exit
 
 
 %% Translate back to Sphere for Post-Processing
 % u=spherefun.coeffs2spherefun(transpose(reshape(ucoeff(:,75),m,n)));
-% 
-n_phi=32; % Has to be even for FFT. 2^N recommended
-n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cot
 
-dtheta=(pi/(n_theta-1));
-dphi=2*pi/(n_phi);
-
-theta=(0:dtheta:pi)';
-phi=0:dphi:(2*pi-dphi);
+% n_phi=32; % Has to be even for FFT. 2^N recommended
+% n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cot
 % 
+% dtheta=(pi/(n_theta-1));
+% dphi=2*pi/(n_phi);
+% 
+% theta=(0:dtheta:pi)';
+% phi=0:dphi:(2*pi-dphi);
+
 % 
 % figure;
 % contour(phi,theta,u(phi,theta));

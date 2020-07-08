@@ -15,24 +15,24 @@ clear all;
 %% Setting up
 % Parameters
 dt = 0.0025;                  % Time step
-tfinal = 200;               % Stopping time
+tfinal = 1;               % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 20;                     % Spaptial discretization - theta (even)
-N_mesh=101;                 % Spaptial discretization - y
+N_mesh=55;                 % Spaptial discretization - y
 diff_const = 1;             % Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
 % S=2.5;                      % Shear time scale
-Vc=1/5;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 Pef=Vc*2;
 omg=[0,-1,0];                % Vorticity direction (1,2,3) 
 
 % Run saving settings
-saving_rate1=50;
-saving_rate2=200;
+saving_rate1=10;
+saving_rate2=10;
 
-% x_sav_location=[1 11 21 26 31 41 51];
-x_sav_location=[1 11 21 31 36 41 46 51];
+x_sav_location=[1 11 21 26 31 41 51];
+% x_sav_location=[1 6 11 16 21 31 36 41 46 48];
 
 %Saving to settings struct
 % settings.S=S;
@@ -60,8 +60,9 @@ ucoeff0=zeros(n*m,N_mesh);ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
 % W_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
 % S_profile=pi*sin(pi*x)*Pef; % W(x)=-cos(pi x)-1
 % S_profile(1)=0;
-S_profile=2*x*Pef; % W(x)=-(1-x^2)
 
+S_profile=2*x*Pef; % W(x)=-(1-x^2)
+% S_profile=Pef*ones(size(x)); % W(x)=x
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
 gamma=[8/15 5/12 3/4];
@@ -83,6 +84,8 @@ else
 end
 settings.Mint=kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]);
 settings.MintSq=settings.Mint*settings.Mint';
+Kp=1;
+settings.Kp=Kp/settings.MintSq/diff_const/dt;
 
 % Advection
 % Madv=adv_mat(settings);
@@ -94,11 +97,6 @@ Mlap=lap_mat(settings);
 helm=helmholtz_gen( n, m);
 
 %Dx
-% Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
-% Rdx(:,1)=0;Rdx(:,N_mesh)=0;
-% Rdx(1:7,     1)=[-49/20;6;-15/2;20/3;-15/4;6/5;-1/6];
-% Rdx(N_mesh-6:N_mesh,N_mesh)=[1/6;-6/5;15/4;-20/3;15/2;-6;49/20];
-% Rdx=Rdx/dx;
 Rdx=D1;
 
 %p1
@@ -115,11 +113,15 @@ u_xloc_save=NaN(n*m,floor(nsteps/saving_rate1),length(x_sav_location));
 ucoeff=ucoeff0;
 adv_p_coeff   =zeros(n*m,N_mesh);
 adv_comb_coeff=zeros(n*m,N_mesh);
+
+    cell_den_loc=real(settings.Mint*ucoeff*2*pi);
+    Nint_loc=cheb.cheb_int(cell_den_loc');
+    
 for i = 1:nsteps
     %% RK step 1
     k=1;
     dxu_coeff=ucoeff*Rdx;
-    for j=1:N_mesh
+    parfor j=1:N_mesh
         settings_loc=settings;
         settings_loc.S=S_profile(j);
         adv_coeff=(settings_loc.S/2)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
@@ -149,9 +151,13 @@ for i = 1:nsteps
             adv_p_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
         end
         
-        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_p_coeff(:,j)));
+        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_p_coeff(:,j)))...
+            -settings.Kp/alpha(k)*(settings.int_const-Nint_loc)*settings.Mint'.*ucoeff(:,j);
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
     end
+    cell_den_loc=real(settings.Mint*ucoeff*2*pi);
+    Nint_loc=cheb.cheb_int(cell_den_loc');
+    
     %% RK step 2
     k=2;
     dxu_coeff=ucoeff*Rdx;
@@ -184,9 +190,13 @@ for i = 1:nsteps
             end
             adv_comb_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
         end
-        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j)); %#ok<*PFBNS>
+        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j))...
+            -settings.Kp/alpha(k)*(settings.int_const-Nint_loc)*settings.Mint'.*ucoeff(:,j); %#ok<*PFBNS>
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
     end
+    cell_den_loc=real(settings.Mint*ucoeff*2*pi);
+    Nint_loc=cheb.cheb_int(cell_den_loc');
+    
     %% RK step 3
     k=3;
     dxu_coeff=ucoeff*Rdx;
@@ -220,12 +230,15 @@ for i = 1:nsteps
             end
             adv_comb_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
         end
-        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j));
-        %     % Integral Compensation
-        %     rhs_coeff = rhs_coeff-settings.Mint'*(settings.Mint*rhs_coeff-settings.int_const/2/pi*(-K2/alpha(k)))/settings.MintSq;
+        rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j))...
+            -settings.Kp/alpha(k)*(settings.int_const-Nint_loc)*settings.Mint'.*ucoeff(:,j);
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
         
     end
+    cell_den_loc=real(settings.Mint*ucoeff*2*pi);
+    Nint_loc=cheb.cheb_int(cell_den_loc');
+
+    
     
     %% Saving for Post-Processing
     if ( mod(i, saving_rate1) == 0 )
@@ -233,7 +246,9 @@ for i = 1:nsteps
             u_xloc_save(:,i/saving_rate1,j)=ucoeff(:,x_sav_location(j));
         end
         
-        cell_den(i/saving_rate1,:)=real(settings.Mint*ucoeff*2*pi);
+        cell_den(i/saving_rate1,:)=cell_den_loc;
+        
+        disp([num2str(i) '/' num2str(nsteps)]);
     end
     
     %    Plot/Save the solution every saving_rate
@@ -258,12 +273,12 @@ end
 % figure;plot(t1,Nint);
 % figure;plot(x,Sf);
 
-save('smol_rBC_2-2beta_0-2Vc_0-4Pef_parabolic_cheb101.mat',...
-    't1','t2','Nint','cell_den','ufull_save','u_xloc_save','ucoeff','ucoeff0',...
-    'settings','x_sav_location','x','dt','diff_const','beta','tfinal',...
-    'nsteps','S_profile','N_mesh','n','m','Vc','Pef','omg',...
-    'saving_rate1','saving_rate2','cheb');
-exit
+% save('smol_rBC_2-2beta_1Vc_2Pef_HomoShear_cheb95_m16_n20_dt0-00005_tf20.mat',...
+%     't1','t2','Nint','cell_den','ufull_save','u_xloc_save','ucoeff','ucoeff0',...
+%     'settings','x_sav_location','x','dt','diff_const','beta','tfinal',...
+%     'nsteps','S_profile','N_mesh','n','m','Vc','Pef','omg',...
+%     'saving_rate1','saving_rate2','cheb');
+% exit
 
 
 %% Translate back to Sphere for Post-Processing
