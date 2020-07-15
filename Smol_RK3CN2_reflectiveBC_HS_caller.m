@@ -14,30 +14,30 @@
 clear all;
 %% Setting up
 % Parameters
-dt = 0.002;                  % Time step
-tfinal = 1+dt*2;               % Stopping time
+dt = 0.0000005;                  % Time step
+tfinal = 0.001+dt*2;               % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 16;                     % Spaptial discretization - theta (even)
 N_mesh=51;                 % Spaptial discretization - y
 diff_const = 1;             % Diffusion constant
-DT=.0;
+DT=.1;
 beta=2.2;                   % Gyrotactic time scale
 % S=2.5;                      % Shear time scale
-Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=Vc*2/beta*1.1;
+Vc=.01;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=1;
 % Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 % Pef=Vc*2;
 
-omg=[0,-1,0];                % Vorticity direction (1,2,3) 
+omg=[0,1,0];                % Vorticity direction (1,2,3) 
 
 % Run saving settings
-saving_rate1=1000;
-saving_rate2=50;
+saving_rate1=50;
+saving_rate2=1000;
 saving_rate3=50;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
-x_sav_location=[1 11 26 31 51];
+x_sav_location=[1 11 26 31 41 46 48 51];
 %Saving to settings struct
 % settings.S=S;
 settings.beta=beta;
@@ -52,7 +52,7 @@ settings.omg3=omg(3);
 % dx=2/(N_mesh);
 % x=-1:dx:1-dx;
 cheb=chebyshev(N_mesh,2,bc_type.none,tran_type.none);
-x=cheb.col_pt;
+z=cheb.col_pt;
 D1=(cheb.D(1))';D2=(cheb.D(2))';
 
 %% Initial Condition
@@ -62,11 +62,11 @@ settings.int_const=int_const;
 ucoeff0=zeros(n*m,N_mesh);ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
 
 %% Shear Profile
-% W_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
-% S_profile=pi*sin(pi*x)*Pef/2; % .5*dW(x)/dx=pi*sin(pi x)/2
-% S_profile(1)=0;
+% U_profile=(sin(pi*x))*Pef;   % U(x)=sin(pi x)
+S_profile=pi*cos(pi*z)*Pef/2;  % U(x)=sin(pi x)
+S_profile(1)=0;
 
-S_profile=x*Pef; % W(x)=-(1-x^2)
+% S_profile=x*Pef; % W(x)=-(1-x^2)
 % S_profile=Pef/2*ones(size(x)); % W(x)=x
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
@@ -91,7 +91,7 @@ Mint=kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]);
 MintSq=Mint*Mint';
 settings.Mint=Mint;
 settings.MintSq=MintSq;
-Kp=1;
+Kp=0.01;
 settings.Kp=Kp/settings.MintSq/diff_const/dt;
 Kp=settings.Kp;
 
@@ -105,10 +105,10 @@ Mlap=lap_mat(settings);
 helm=helmholtz_gen( n, m);
 
 %Dx
-Rdx=D1;
+Rdz=D1;
 
 
-Rd2x=D2;
+Rd2z=D2;
 
 
 
@@ -130,8 +130,8 @@ Dxx=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dzx=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dxz=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dzz=NaN(floor(nsteps/saving_rate3),N_mesh);
-Vix=NaN(floor(nsteps/saving_rate3),N_mesh);
-% Viz=NaN(floor(nsteps/saving_rate3),N_mesh);
+% Vix=NaN(floor(nsteps/saving_rate3),N_mesh);
+Viz=NaN(floor(nsteps/saving_rate3),N_mesh);
 Vux=NaN(floor(nsteps/saving_rate3),N_mesh);
 Vuz=NaN(floor(nsteps/saving_rate3),N_mesh);
 ex=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -153,8 +153,8 @@ for i = 1:nsteps
     %% RK step 1
     k=1;
     % Par-For Version
-    dxu_coeff=ucoeff*Rdx;
-    dx2u_coeff=ucoeff*Rd2x;
+    dzu_coeff=ucoeff*Rdz;
+    dz2u_coeff=ucoeff*Rd2z;
     parfor j=1:N_mesh
         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
@@ -162,26 +162,25 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=Vc*Mp1*dxu_coeff(:,j);
+        swim_coeff=Vc*Mp3*dzu_coeff(:,j);
         
-        DT_coeff=DT*dx2u_coeff(:,j);
+        DT_coeff=DT*dz2u_coeff(:,j);
         
         adv_p_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
-        
         if j==1 || j==N_mesh
             adv_col=transpose(reshape(adv_p_coeff(:,j),m,n));
-            floorm=floor(m/2);
-            if mod(m,2)
-            for l=1:floorm
-                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
-                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
-            end
+            floorn=floor(n/2);
+             if mod(n,2)
+                for ll=1:floorn
+                    adv_col(floorn+1-ll,:)=(adv_col(floorn+1-ll,:)+(-1)^ll*adv_col(floorn+1+ll,:))/2;
+                    adv_col(floorn+1+ll,:)=(-1)^ll*adv_col(floorn+1-ll,:);
+                end
             else
                 adv_col(:,1)=0;
-            for l=1:floorm-1
-                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
-                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
-            end       
+                for ll=1:floorn-1
+                    adv_col(floorn+1-ll,:)=(adv_col(floorn+1-ll,:)+(-1)^ll*adv_col(floorn+1+ll,:))/2;
+                    adv_col(floorn+1+ll,:)=(-1)^ll*adv_col(floorn+1-ll,:);
+                end
             end
             adv_p_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
         end
@@ -195,36 +194,34 @@ for i = 1:nsteps
     
     %% RK step 2
     k=2;
-    dxu_coeff=ucoeff*Rdx;
-    dx2u_coeff=ucoeff*Rd2x;
+    dzu_coeff=ucoeff*Rdz;
+    dz2u_coeff=ucoeff*Rd2z;
     parfor j=1:N_mesh
-%         adv_p_coeff=adv_coeff+swim_coeff;
         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=Vc*Mp1*dxu_coeff(:,j);
+        swim_coeff=Vc*Mp3*dzu_coeff(:,j);
         
-        DT_coeff=DT*dx2u_coeff(:,j);
+        DT_coeff=DT*dz2u_coeff(:,j);
         
         adv_comb_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
-        
         if j==1 || j==N_mesh
             adv_col=transpose(reshape(adv_comb_coeff(:,j),m,n));
-            floorm=floor(m/2);
-            if mod(m,2)
-            for l=1:floorm
-                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
-                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
-            end
+            floorn=floor(n/2);
+             if mod(n,2)
+                for ll=1:floorn
+                    adv_col(floorn+1-ll,:)=(adv_col(floorn+1-ll,:)+(-1)^ll*adv_col(floorn+1+ll,:))/2;
+                    adv_col(floorn+1+ll,:)=(-1)^ll*adv_col(floorn+1-ll,:);
+                end
             else
                 adv_col(:,1)=0;
-            for l=1:floorm-1
-                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
-                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
-            end       
+                for ll=1:floorn-1
+                    adv_col(floorn+1-ll,:)=(adv_col(floorn+1-ll,:)+(-1)^ll*adv_col(floorn+1+ll,:))/2;
+                    adv_col(floorn+1+ll,:)=(-1)^ll*adv_col(floorn+1-ll,:);
+                end
             end
             adv_comb_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
         end
@@ -237,43 +234,41 @@ for i = 1:nsteps
     
     %% RK step 3
     k=3;
-    dxu_coeff=ucoeff*Rdx;
-    dx2u_coeff=ucoeff*Rd2x;
+    dzu_coeff=ucoeff*Rdz;
+    dz2u_coeff=ucoeff*Rd2z;
     adv_p_coeff=adv_comb_coeff;
     parfor j=1:N_mesh
-       
         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=Vc*Mp1*dxu_coeff(:,j);
+        swim_coeff=Vc*Mp3*dzu_coeff(:,j);
         
-        DT_coeff=DT*dx2u_coeff(:,j);
+        DT_coeff=DT*dz2u_coeff(:,j);
         
         adv_comb_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
         if j==1 || j==N_mesh
             adv_col=transpose(reshape(adv_comb_coeff(:,j),m,n));
-            floorm=floor(m/2);
-            if mod(m,2)
-            for l=1:floorm
-                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
-                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
-            end
+            floorn=floor(n/2);
+             if mod(n,2)
+                for ll=1:floorn
+                    adv_col(floorn+1-ll,:)=(adv_col(floorn+1-ll,:)+(-1)^ll*adv_col(floorn+1+ll,:))/2;
+                    adv_col(floorn+1+ll,:)=(-1)^ll*adv_col(floorn+1-ll,:);
+                end
             else
                 adv_col(:,1)=0;
-            for l=1:floorm-1
-                adv_col(:,floorm+1-l)=(adv_col(:,floorm+1-l)+(-1)^l*adv_col(:,floorm+1+l))/2;
-                adv_col(:,floorm+1+l)=(-1)^l*adv_col(:,floorm+1-l);
-            end       
+                for ll=1:floorn-1
+                    adv_col(floorn+1-ll,:)=(adv_col(floorn+1-ll,:)+(-1)^ll*adv_col(floorn+1+ll,:))/2;
+                    adv_col(floorn+1+ll,:)=(-1)^ll*adv_col(floorn+1-ll,:);
+                end
             end
             adv_comb_coeff(:,j)=reshape(transpose(adv_col),n*m,1);
         end
         rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j))...
             -Kp/alpha(k)*(int_const-Nint_loc)*Mint'.*ucoeff(:,j);
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
-        
     end
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=cheb.cheb_int(cell_den_loc');
@@ -313,59 +308,59 @@ for i = 1:nsteps
      if ( mod(i, saving_rate3) == 0 )
         cellden_temp=real(Mint*ucoeff*2*pi);
         f=ucoeff./cellden_temp;
-        d2xf=f*Rd2x;
-        dxf=f*Rdx;
-%         d2zf=f*Rd2z;
-%         dzf=f*Rdz;
+%         d2xf=f*Rd2x;
+%         dxf=f*Rdx;
+        d2zf=f*Rd2z;
+        dzf=f*Rdz;
         ex_avg=real(Mint*Mp1*f*(2*pi));
         ez_avg=real(Mint*Mp3*f*(2*pi));
         
         bx_RHS=Mp1*f-ex_avg.*f;
         bz_RHS=Mp3*f-ez_avg.*f;
-        inhomo_p1_RHS=Mp1*(f*Rdx)-(ex_avg*Rdx).*f;
-        % inhomo_p3_RHS=Mp3*(f*Rdz)-(ez_avg*Rdz).*f;
+%         inhomo_p1_RHS=Mp1*(f*Rdx)-(ex_avg*Rdx).*f;
+        inhomo_p3_RHS=Mp3*(f*Rdz)-(ez_avg*Rdz).*f;
         
         Dxx_temp=NaN(1,N_mesh);
         Dzx_temp=NaN(1,N_mesh);
         Dxz_temp=NaN(1,N_mesh);
         Dzz_temp=NaN(1,N_mesh);
-        Vix_temp=NaN(1,N_mesh);
-%         Viz_temp=NaN(1,N_mesh);
+%         Vix_temp=NaN(1,N_mesh);
+        Viz_temp=NaN(1,N_mesh);
         Va_temp=NaN(1,N_mesh);
         DDT_temp=NaN(1,N_mesh);
-        for j=1:N_mesh            
+        parfor j=1:N_mesh            
             Le=S_profile(j)*Mvor+Mgyro-Mlap; % TODO: Singular when beta=0
 
             bx=[Le;Mint]\[bx_RHS(:,j);0];
             bz=[Le;Mint]\[bz_RHS(:,j);0];
-            b_DT_p1=[Le;Mint]\[dxf(:,j);0];
-%             b_DT_p3=[Le;Mint]\[dzf(:,j);0];
-            f_inhomo_p1=[Le;Mint]\[inhomo_p1_RHS(:,j);0];
-%             f_inhomo_p3=[Le;Mint]\[inhomo_p3_RHS(:,j);0];
-            f_a=[Le;Mint]\[d2xf(:,j);0];
-%             f_a=[Le;Mint]\[d2zf(:,j);0];
-
+%             b_DT_p1=[Le;Mint]\[dxf(:,j);0];
+            b_DT_p3=[Le;Mint]\[dzf(:,j);0];
+%             f_inhomo_p1=[Le;Mint]\[inhomo_p1_RHS(:,j);0];
+            f_inhomo_p3=[Le;Mint]\[inhomo_p3_RHS(:,j);0];
+%             f_a=[Le;Mint]\[d2xf(:,j);0];
+            f_a=[Le;Mint]\[d2zf(:,j);0];
+            
             Dxx_temp(j)=Mint*(Mp1*bx)*2*pi;
             Dxz_temp(j)=Mint*(Mp1*bz)*2*pi;
             Dzx_temp(j)=Mint*(Mp3*bx)*2*pi;
             Dzz_temp(j)=Mint*(Mp3*bz)*2*pi;
-            Vix_temp(j)=Mint*(Mp1*f_inhomo_p1)*2*pi;
-%             Viz_temp(j)=Mint*(Mp3*f_inhomo_p3)*2*pi;
+%             Vix_temp(j)=Mint*(Mp1*f_inhomo_p1)*2*pi;
+            Viz_temp(j)=Mint*(Mp3*f_inhomo_p3)*2*pi;
             Va_temp(j)=Mint*(f_a)*2*pi;
-            DDT_temp(j)=Mint*(b_DT_p1)*2*pi;
+            DDT_temp(j)=Mint*(b_DT_p3)*2*pi;
         end
         Dxx(i/saving_rate3,:)=Dxx_temp;
         Dxz(i/saving_rate3,:)=Dxz_temp;
         Dzx(i/saving_rate3,:)=Dzx_temp;
         Dzz(i/saving_rate3,:)=Dzz_temp;
-        Vix(i/saving_rate3,:)=Vix_temp;
-%         Viz(i/saving_rate3,:)=Viz_temp;
+%         Vix(i/saving_rate3,:)=Vix_temp;
+        Viz(i/saving_rate3,:)=Viz_temp;
         ex(i/saving_rate3,:)=ex_avg;
         ez(i/saving_rate3,:)=ez_avg;
-                
+                        
         Va(i/saving_rate3,:)=Va_temp;
         DDT(i/saving_rate3,:)=DDT_temp;
-        
+
         cell_den(i/saving_rate3,:)=cellden_temp;
         
         disp([num2str(i) '/' num2str(nsteps)]);
@@ -411,15 +406,15 @@ for i=1:length(t3)
     Nint(i)=cheb.cheb_int(cell_den(i,:)');
 end
 
-ex_file_name=['smol_rBC_' num2str(beta) 'beta_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_para_cheb' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_rBC_HS_' num2str(beta) 'beta_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_sinpi_cheb' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name '.mat'],...
-    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT',...
-    'dt','tfinal','settings','Kp','x','cheb',... 'dx'
+    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const',...
+    'dt','tfinal','settings','Kp','z','cheb',... 'dx'
     'saving_rate1','saving_rate2','saving_rate3',...
     't1','t2','t3','Nint','cell_den',...
     'ufull_save','u_xloc_save','x_sav_location','ucoeff','ucoeff0',...
-    'Dxx','Dxz','Dzx','Dzz','Vix','Vux','ex','Vuz','ez','DDT','Va',... 'Viz',
+    'Dxx','Dxz','Dzx','Dzz','Viz','Vux','ex','Vuz','ez','DDT','Va',... 'Viz',
     'fdt_full_save','fndt_full_save','-v7.3');
-exit
+% exit
