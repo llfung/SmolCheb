@@ -1,48 +1,29 @@
 function Madv=adv_mat(settings)
-persistent n m Msinncosm Msinnsinm Mcosn Mde1 Mde2 Mde3
+persistent n m Mvor1 Mvor2 Mvor3 Mgyro
 
 if isempty(n)
     n=settings.n;
     m=settings.m;
-    [Msinncosm,Msinnsinm,Mcosn,Mde1,Mde2,Mde3]=gen_mat(n,m)
+    [Mvor1,Mvor2,Mvor3,Mgyro]=gen_mat(n,m);
 elseif ~(settings.n==n && settings.m==m)
     n=settings.n;
     m=settings.m;
-    [Msinncosm,Msinnsinm,Mcosn,Mde1,Mde2,Mde3]=gen_mat(n,m)
+    [Mvor1,Mvor2,Mvor3,Mgyro]=gen_mat(n,m);
 end
     
-    
-    vor1=(settings.omg2*Mcosn    -settings.omg3*Msinnsinm);
-    vor2=(settings.omg3*Msinncosm-settings.omg1*Mcosn    );
-    vor3=(settings.omg1*Msinnsinm-settings.omg2*Msinncosm);
-    
-    gyro1=-Mcosn*Msinncosm;
-    gyro2=-Mcosn*Msinnsinm;
-    gyro3=(speye(n*m)-Mcosn*Mcosn);
-    
-    adv1_coeff=settings.S/2*vor1+settings.beta*gyro1;
-    adv2_coeff=settings.S/2*vor2+settings.beta*gyro2;
-    adv3_coeff=settings.S/2*vor3+settings.beta*gyro3;
-    
-    Madv=(Mde1*adv1_coeff+Mde2*adv2_coeff+Mde3*adv3_coeff);
-    
+    Madv=settings.S*(settings.omg1*Mvor1+settings.omg2*Mvor2+settings.omg3*Mvor3)...
+        +settings.beta*Mgyro;  
 end
-function [Msinncosm,Msinnsinm,Mcosn,Mde1,Mde2,Mde3]=gen_mat(n,m)
+function [Mvor1,Mvor2,Mvor3,Mgyro]=gen_mat(n,m)
 
-    Msinncosm = kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m)); %e1
-    Msinnsinm = kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)); %e2
-    Mcosn = kron(spdiags(.5*ones(n,1)*[1,1], [-1 1], n, n),speye(m)); %e3
+    M_n_cotn = (spdiags(ones(n,1)*[-1,1], [-1 1], n, n))\spdiags(.5*ones(n,1)*[1,1], [-1 1], n, n);
     
-%     invMsinn_sinm = kron(inv(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)),spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)); 
-    invMsinn_sinm = kron(inv(spdiags(ones(n,1)*[-1,1], [-1 1], n, n)),spdiags(ones(m,1)*[-1,1], [-1 1], m, m)); %for de1
-%     invMsinn_cosm = kron(inv(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m)); 
-    invMsinn_cosm = kron(inv(spdiags(1i*ones(n,1)*[-1,1], [-1 1], n, n)),spdiags(ones(m,1)*[1,1], [-1 1], m, m)); %for de2
+    Mvor1 = -kron(spdiags((-n/2:n/2-1)'*1i,0, n, n),spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m))...
+        -kron(M_n_cotn,spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m)*spdiags((-m/2:m/2-1)'*1i,0, m, m));
+    Mvor2 = kron(spdiags((-n/2:n/2-1)'*1i,0, n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))...
+        -kron(M_n_cotn,spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)*spdiags((-m/2:m/2-1)'*1i,0, m, m));
+    Mvor3 = -kron(spdiags((-n/2:n/2-1)'*1i,0, n, n),speye(m));
     
-    Mde1= -invMsinn_sinm*kron(speye(n),spdiags((-m/2:m/2-1)'*1i,0, m, m))...
-        + kron(spdiags(.5*ones(n,1)*[1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n),...
-        spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m)); % de1
-    Mde2= invMsinn_cosm*kron(speye(n),spdiags((-m/2:m/2-1)'*1i,0, m, m))...
-        + kron(spdiags(.5*ones(n,1)*[1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n),...
-        spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)); % de2
-    Mde3= -kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n),speye(m)); % de3
+    Mgyro=kron(-spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n)*spdiags((-n/2:n/2-1)'*1i,0, n, n)...
+        -2*spdiags(.5*ones(n,1)*[1,1], [-1 1], n, n),speye(m));
 end
