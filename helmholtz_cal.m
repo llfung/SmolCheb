@@ -21,8 +21,8 @@ for i = [floor(helm.n/2):-1:1 floor(helm.n/2)+2:helm.n]
 end
 
 % Now, do zeroth mode:
-ii = [1:helm.floorm helm.floorm+2:helm.m];
-CFS(:, helm.k) = [ helm.en ; L( ii, :) ] \ [ int_const ; F(ii, helm.k) ];
+CFS(:, helm.k) = [L( 1:helm.floorm, :) ; helm.en ; L( helm.floorm+2:helm.m, :) ] ...
+    \ [ F(1:helm.floorm, helm.k);int_const ; F(helm.floorm+2:helm.m, helm.k) ];
 
 ucoeff=reshape(transpose(CFS),helm.n*helm.m,1);
 end

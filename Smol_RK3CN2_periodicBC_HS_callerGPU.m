@@ -6,38 +6,29 @@
 % Spherefun Helmholtz Solver (only slightly modified to remove
 % chebfun-based activiities). 
 
-% pc=parcluster('local');
-% pc.JobStorageLocation = strcat(getenv('TMPDIR'),'/para_tmp');
-% par=parpool(pc,32);
-
-% parpool(20);
-clear all;
 %% Setting up
 % Parameters
-dt = 0.001;                  % Time step
-tfinal = 0.1+dt*2;               % Stopping time
+Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=1;                      % Flow Peclet Number (Pe_f)
+dt = min(0.002/Vc,0.01);    % Time step
+tfinal = 15/Vc+dt*2;        % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 12;                     % Spatial discretization - phi (even)
 n = 24;                     % Spaptial discretization - theta (even)
-N_mesh=200;                 % Spaptial discretization - y
-diff_const = 1;             % Diffusion constant
-DT=.0;
+N_mesh=256;                 % Spaptial discretization - y
+diff_const = 1;             % Rotational Diffusion constant
+DT=.0;                      % Translational Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
-% S=2.5;                      % Shear time scale
-Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=1;
-% Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-% Pef=Vc*2;
 
 omg=[0,1,0];                % Vorticity direction (1,2,3) 
 
 % Run saving settings
 saving_rate1=10000;
-saving_rate2=50;
-saving_rate3=10;
+saving_rate2=1000;
+saving_rate3=25;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
-x_sav_location=[1 11 26 31 41 46 48 51];
+x_sav_location=[1 21 41 61 81 101 121 129];
 %Saving to settings struct
 % settings.S=S;
 settings.beta=beta;
@@ -97,11 +88,14 @@ Kp=settings.Kp;
 
 % Advection
 % Madv=adv_mat(settings);
-Mvor=gpuArray(complex(adv_vor_mat(settings)));
-Mgyro=gpuArray(complex(settings.beta*adv_gyro_mat(settings)));
+% Mvor=gpuArray(complex(adv_vor_mat(settings)));
+% Mgyro=gpuArray(complex(settings.beta*adv_gyro_mat(settings)));
+%For strange behaviour in MATLAB ver < R2020
+Mvor=gpuArray(sparse(complex(full(adv_vor_mat(settings)))));
+Mgyro=gpuArray(sparse(complex(full(settings.beta*adv_gyro_mat(settings)))));
 
 %Laplacian
-Mlap=gpuArray(complex(lap_mat(settings)));
+Mlap=gpuArray(sparse(complex(full(lap_mat(settings)))));
 helm=helmholtz_genGPU( n, m);
 helm_inv_k1=helmholtz_precalGPU( -K2/alpha(1),helm);
 helm_inv_k2=helmholtz_precalGPU( -K2/alpha(2),helm);
@@ -118,7 +112,7 @@ Rd2z=gpuArray(Rd2z/dz/dz);
 %p1
 Mp1 = gpuArray(complex(kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))));
 %p3
-Mp3 = gpuArray(complex(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)))); %e3
+Mp3 = gpuArray(sparse(complex(full(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)))))); %e3
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -161,7 +155,6 @@ ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dz;
 
-tic
 for i = 1:nsteps
     %% RK step 1
     k=1;
@@ -398,7 +391,7 @@ for i = 1:nsteps
 
     end 
 end
-toc
+
 
 %% Surface Integral Conservation check
 t1=dt*saving_rate1:dt*saving_rate1:tfinal;
@@ -425,4 +418,5 @@ save([ex_file_name 'GPU.mat'],...
     'ufull_save','u_xloc_save','x_sav_location','ucoeff','ucoeff0',...
     'Dxx','Dxz','Dzx','Dzz','Viz','Vux','ex','Vuz','ez','DDT','Va',... 'Viz',
     'fdt_full_save','fndt_full_save','-v7.3');
+
 % exit

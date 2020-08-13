@@ -279,7 +279,7 @@ for i = 1:nsteps
         Viz_temp=NaN(1,N_mesh);
         Va_temp=NaN(1,N_mesh);
         DDT_temp=NaN(1,N_mesh);
-        for j=1:N_mesh            
+        parfor j=1:N_mesh            
             Le=S_profile(j)*Mvor+Mgyro-Mlap; % TODO: Singular when beta=0
 
             bx=[Le;Mint]\[bx_RHS(:,j);0];
