@@ -15,21 +15,20 @@ clear all;
 %% Setting up
 % Parameters
 dt = 0.005;                  % Time step
-tfinal = 2+dt*2;               % Stopping time
-nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 16;                     % Spatial discretization - phi (even)
-n = 16;                     % Spaptial discretization - theta (even)
-N_mesh=51;                 % Spaptial discretization - y
-diff_const = 1;             % Diffusion constant
+tfinal = 2+dt*2;             % Stopping time
+nsteps = ceil(tfinal/dt);    % Number of time steps
+m = 16;                      % Spatial discretization - phi (even)
+n = 16;                      % Spaptial discretization - theta (even)
+N_mesh=51;                   % Spaptial discretization - y
+diff_const = 1;              % Diffusion constant
 DT=.0;
-beta=2.2;                   % Gyrotactic time scale
-% S=2.5;                      % Shear time scale
-Vc=.01;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=0.1;
-% Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-% Pef=Vc*2;
+beta=2.2;                    % Gyrotactic time scale
+Vc=.01;                      % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=0.1;                     % Flow Peclet Number (Pe_f)
 
 omg=[0,1,0];                % Vorticity direction (1,2,3) 
+AR=1;                       % Aspect Ratio of swimmer (1=spherical)
+B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
 
 % Run saving settings
 saving_rate1=1000;
@@ -37,7 +36,8 @@ saving_rate2=1000;
 saving_rate3=25;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
-x_sav_location=[1 11 26 31 41 46 48 51];
+z_sav_location=[1 11 26 31 41 46 48 51];
+
 %Saving to settings struct
 % settings.S=S;
 settings.beta=beta;
@@ -46,7 +46,12 @@ settings.m=m;
 settings.omg1=omg(1);
 settings.omg2=omg(2);
 settings.omg3=omg(3);
-
+settings.e11=0;
+settings.e12=0;
+settings.e13=1;
+settings.e22=0;
+settings.e23=0;
+settings.e33=0;
 
 %% x-domain Meshing
 dz=2/(N_mesh);
@@ -97,14 +102,14 @@ Kp=settings.Kp;
 
 % Advection
 % Madv=adv_mat(settings);
-Mvor=adv_vor_mat(settings);
+Mvor=adv_vor_mat(settings)+B*adv_strain_mat(settings);
 Mgyro=settings.beta*adv_gyro_mat(settings);
 
 %Laplacian
 Mlap=lap_mat(settings);
 helm=helmholtz_gen( n, m);
 
-%Dx
+%Dz
 Rdz=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
 Rdz=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rdz);
 Rdz=Rdz/dz;
@@ -124,7 +129,7 @@ ufull_save=NaN(n*m,N_mesh,floor(nsteps/saving_rate2));
 fdt_full_save=NaN(n*m,N_mesh,floor(nsteps/saving_rate2));
 fndt_full_save=NaN(n*m,N_mesh,floor(nsteps/saving_rate2));
 
-u_xloc_save=NaN(n*m,floor(nsteps/saving_rate1),length(x_sav_location));
+u_zloc_save=NaN(n*m,floor(nsteps/saving_rate1),length(z_sav_location));
 
 Dxx=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dzx=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -226,8 +231,8 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing
     if ( mod(i, saving_rate1) == 0 )
-        for j=1:length(x_sav_location)
-            u_xloc_save(:,i/saving_rate1,j)=ucoeff(:,x_sav_location(j));
+        for j=1:length(z_sav_location)
+            u_zloc_save(:,i/saving_rate1,j)=ucoeff(:,z_sav_location(j));
         end
     end
     
@@ -357,15 +362,15 @@ Nint=sum(cell_den,2)*dz;
 %     Nint(i)=cheb.cheb_int(cell_den(i,:)');
 % end
 
-ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name '.mat'],...
-    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT',...
+    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT','B',...
     'dt','tfinal','settings','Kp','z','dz',... % 'cheb',... 'dx'
     'saving_rate1','saving_rate2','saving_rate3',...
     't1','t2','t3','Nint','cell_den',...
-    'ufull_save','u_xloc_save','x_sav_location','ucoeff','ucoeff0',...
+    'ufull_save','u_zloc_save','z_sav_location','ucoeff','ucoeff0',...
     'Dxx','Dxz','Dzx','Dzz','Viz','Vux','ex','Vuz','ez','DDT','Va',... 'Viz',
     'fdt_full_save','fndt_full_save','-v7.3');
 % exit

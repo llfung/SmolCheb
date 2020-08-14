@@ -14,39 +14,45 @@
 clear all;
 %% Setting up
 % Parameters
-dt = 0.0001;                  % Time step
-tfinal = 10+dt*2;               % Stopping time
+dt = 0.01;                  % Time step
+tfinal = 10+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 20;                     % Spaptial discretization - theta (even)
 N_mesh=100;                 % Spaptial discretization - y
 diff_const = 1;             % Diffusion constant
-DT=1;
+DT=0;
 beta=2.2;                   % Gyrotactic time scale
-% S=2.5;                      % Shear time scale
 Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=2;
-% Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-% Pef=Vc*2;
+Pef=1;                      % Flow Peclet Number (Pe_f)
+
 
 omg=[0,-1,0];                % Vorticity direction (1,2,3) 
+AR=1;                       % Aspect Ratio of swimmer (1=spherical)
+% AR=1.3778790674938353091971374518539773339097820167847;
+B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
 
 % Run saving settings
-saving_rate1=100;
+saving_rate1=1000;
 saving_rate2=1000;
 saving_rate3=25;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
 x_sav_location=[1 11 26 31 51];
+
 %Saving to settings struct
-% settings.S=S;
 settings.beta=beta;
 settings.n=n;
 settings.m=m;
 settings.omg1=omg(1);
 settings.omg2=omg(2);
 settings.omg3=omg(3);
-
+settings.e11=0;
+settings.e12=0;
+settings.e13=1;
+settings.e22=0;
+settings.e23=0;
+settings.e33=0;
 
 %% x-domain Meshing
 dx=2/(N_mesh);
@@ -97,7 +103,7 @@ Kp=settings.Kp;
 
 % Advection
 % Madv=adv_mat(settings);
-Mvor=adv_vor_mat(settings);
+Mvor=adv_vor_mat(settings)+B*adv_strain_mat(settings);
 Mgyro=settings.beta*adv_gyro_mat(settings);
 
 %Laplacian
@@ -360,11 +366,11 @@ Nint=sum(cell_den,2)*dx;
 %     Nint(i)=cheb.cheb_int(cell_den(i,:)');
 % end
 
-ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name '.mat'],...
-    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT',...
+    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT','B',...
     'dt','tfinal','settings','Kp','x','dx',...
     'saving_rate1','saving_rate2','saving_rate3',...
     't1','t2','t3','Nint','cell_den',...
