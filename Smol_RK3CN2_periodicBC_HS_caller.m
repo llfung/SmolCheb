@@ -14,25 +14,29 @@
 clear all;
 %% Setting up
 % Parameters
-dt = 0.005;                  % Time step
-tfinal = 2+dt*2;             % Stopping time
-nsteps = ceil(tfinal/dt);    % Number of time steps
-m = 16;                      % Spatial discretization - phi (even)
-n = 16;                      % Spaptial discretization - theta (even)
-N_mesh=51;                   % Spaptial discretization - y
-diff_const = 1;              % Diffusion constant
-DT=.0;
-beta=2.2;                    % Gyrotactic time scale
-Vc=.01;                      % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=0.1;                     % Flow Peclet Number (Pe_f)
+Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=1;                      % Flow Peclet Number (Pe_f)
+Vsmin=0.2;                  % Minimum sedimentaion (Vs)
+Vsvar=0.2;                  % Vs_max-Vs_min
 
-omg=[0,1,0];                % Vorticity direction (1,2,3) 
-AR=1;                       % Aspect Ratio of swimmer (1=spherical)
+diff_const = 1;             % Rotational Diffusion constant
+DT=.0;                      % Translational Diffusion constant
+beta=2.2;                   % Gyrotactic time scale
+AR=20;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
 B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
 
+dt = 0.01;                  % Time step
+tfinal = 20+dt*2;           % Stopping time
+nsteps = ceil(tfinal/dt);   % Number of time steps
+m = 16;                     % Spatial discretization - phi (even)
+n = 20;                     % Spaptial discretization - theta (even)
+N_mesh=100;                 % Spaptial discretization - z
+
+omg=[0,1,0];                % Vorticity direction (1,2,3) 
+
 % Run saving settings
-saving_rate1=1000;
-saving_rate2=1000;
+saving_rate1=2000;
+saving_rate2=2000;
 saving_rate3=25;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
@@ -121,6 +125,7 @@ Rd2z=Rd2z/dz/dz;
 Mp1 = kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
 %p3
 Mp3 = kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)); %e3
+Mp3sq= kron(spdiags(ones(n,1)*[.25,.5,.25], [-2 0 2], n, n),speye(m)); %e3^2
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -168,10 +173,12 @@ for i = 1:nsteps
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
         swim_coeff=Vc*Mp3*dzu_coeff(:,j);
+        sedimin_ceoff=-Vsmin*dzu_coeff(:,j);
+        sedivar_ceoff=-Vsvar*Mp3sq*dzu_coeff(:,j);
         
         DT_coeff=DT*dz2u_coeff(:,j);
         
-        adv_p_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
+        adv_p_coeff(:,j)=adv_coeff+swim_coeff+sedimin_ceoff+sedivar_ceoff-DT_coeff;
 
         rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_p_coeff(:,j)))...
             -Kp/alpha(k)*(int_const-Nint_loc)*Mint'.*ucoeff(:,j);
@@ -192,10 +199,12 @@ for i = 1:nsteps
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
         swim_coeff=Vc*Mp3*dzu_coeff(:,j);
+        sedimin_ceoff=-Vsmin*dzu_coeff(:,j);
+        sedivar_ceoff=-Vsvar*Mp3sq*dzu_coeff(:,j);
         
         DT_coeff=DT*dz2u_coeff(:,j);
         
-        adv_comb_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
+        adv_comb_coeff(:,j)=adv_coeff+swim_coeff+sedimin_ceoff+sedivar_ceoff-DT_coeff;
 
         rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j))...
             -Kp/alpha(k)*(int_const-Nint_loc)*Mint'.*ucoeff(:,j); %#ok<*PFBNS>
@@ -217,10 +226,12 @@ for i = 1:nsteps
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
         swim_coeff=Vc*Mp3*dzu_coeff(:,j);
+        sedimin_ceoff=-Vsmin*dzu_coeff(:,j);
+        sedivar_ceoff=-Vsvar*Mp3sq*dzu_coeff(:,j);
         
         DT_coeff=DT*dz2u_coeff(:,j);
         
-        adv_comb_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
+        adv_comb_coeff(:,j)=adv_coeff+swim_coeff+sedimin_ceoff+sedivar_ceoff-DT_coeff;
 
         rhs_coeff = -K2/alpha(k)*ucoeff(:,j)-lap_coeff+1/diff_const/alpha(k)*(gamma(k)*(adv_comb_coeff(:,j))+rho(k)*adv_p_coeff(:,j))...
             -Kp/alpha(k)*(int_const-Nint_loc)*Mint'.*ucoeff(:,j);
@@ -362,15 +373,15 @@ Nint=sum(cell_den,2)*dz;
 %     Nint(i)=cheb.cheb_int(cell_den(i,:)');
 % end
 
-ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name '.mat'],...
-    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT','B',...
+    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT','B','Vsmin','Vsvar',...
     'dt','tfinal','settings','Kp','z','dz',... % 'cheb',... 'dx'
     'saving_rate1','saving_rate2','saving_rate3',...
     't1','t2','t3','Nint','cell_den',...
     'ufull_save','u_zloc_save','z_sav_location','ucoeff','ucoeff0',...
-    'Dxx','Dxz','Dzx','Dzz','Viz','Vux','ex','Vuz','ez','DDT','Va',... 'Viz',
+    'Dxx','Dxz','Dzx','Dzz','Viz','Vux','ex','Vuz','ez','DDT','Va',...
     'fdt_full_save','fndt_full_save','-v7.3');
 % exit

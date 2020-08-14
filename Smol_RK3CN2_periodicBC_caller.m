@@ -14,23 +14,25 @@
 clear all;
 %% Setting up
 % Parameters
+Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=1;                      % Flow Peclet Number (Pe_f)
+% Vsmin=0.2;                  % Minimum sedimentaion (Vs)
+Vsvar=0.2;                  % Vs_max-Vs_min
+
+diff_const = 1;             % Rotational Diffusion constant
+DT=.0;                      % Translational Diffusion constant
+beta=2.2;                   % Gyrotactic time scale
+AR=20;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
+B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
+
 dt = 0.01;                  % Time step
-tfinal = 10+dt*2;           % Stopping time
+tfinal = 20+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spatial discretization - phi (even)
 n = 20;                     % Spaptial discretization - theta (even)
-N_mesh=100;                 % Spaptial discretization - y
-diff_const = 1;             % Diffusion constant
-DT=0;
-beta=2.2;                   % Gyrotactic time scale
-Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=1;                      % Flow Peclet Number (Pe_f)
+N_mesh=100;                 % Spaptial discretization - x
 
-
-omg=[0,-1,0];                % Vorticity direction (1,2,3) 
-AR=1;                       % Aspect Ratio of swimmer (1=spherical)
-% AR=1.3778790674938353091971374518539773339097820167847;
-B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
+omg=[0,-1,0];               % Vorticity direction (1,2,3) 
 
 % Run saving settings
 saving_rate1=1000;
@@ -121,7 +123,9 @@ Rd2x=Rd2x/dx/dx;
 %p1
 Mp1 = kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
 %p3
-Mp3 = kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)); %e3
+Mp3 = kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m));
+%p1p3
+Mp1p3 = kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -168,7 +172,7 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=Vc*Mp1*dxu_coeff(:,j);
+        swim_coeff=(Vc*Mp1-Vsvar*Mp1p3)*dxu_coeff(:,j);
         
         DT_coeff=DT*dx2u_coeff(:,j);
         
@@ -193,7 +197,7 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=Vc*Mp1*dxu_coeff(:,j);  
+        swim_coeff=(Vc*Mp1-Vsvar*Mp1p3)*dxu_coeff(:,j);  
         
         DT_coeff=DT*dx2u_coeff(:,j);
         
@@ -219,7 +223,7 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=Vc*Mp1*dxu_coeff(:,j);
+        swim_coeff=(Vc*Mp1-Vsvar*Mp1p3)*dxu_coeff(:,j);
 
         DT_coeff=DT*dx2u_coeff(:,j);
         
@@ -366,16 +370,16 @@ Nint=sum(cell_den,2)*dx;
 %     Nint(i)=cheb.cheb_int(cell_den(i,:)');
 % end
 
-ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name '.mat'],...
-    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT','B',...
+    'n','m','N_mesh','nsteps','S_profile','Vc','Pef','omg','beta','diff_const','DT','B','Vsvar',...
     'dt','tfinal','settings','Kp','x','dx',...
     'saving_rate1','saving_rate2','saving_rate3',...
     't1','t2','t3','Nint','cell_den',...
     'ufull_save','u_xloc_save','x_sav_location','ucoeff','ucoeff0',...
-    'Dxx','Dxz','Dzx','Dzz','Vix','Vux','ex','Vuz','ez','DDT','Va',... 'Viz',
+    'Dxx','Dxz','Dzx','Dzz','Vix','Vux','ex','Vuz','ez','DDT','Va',...
     'fdt_full_save','fndt_full_save','-v7.3');
 exit
 
