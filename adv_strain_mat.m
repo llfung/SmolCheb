@@ -3,7 +3,7 @@ function Madv=adv_strain_mat(settings)
     n=settings.n;
     m=settings.m;
     M_n_cotn = (spdiags(1i*ones(n,1)*[-1,1], [-1 1], n, n))\spdiags(ones(n,1)*[1,1], [-1 1], n, n);
-    diagEterm = settings.e11+settings.e11-settings.e33*2;
+    diagEterm = settings.e11+settings.e22-settings.e33*2;
     Mcosm  = spdiags(.5 *ones(m,1)*[ 1,1], [-1 1], m, m); %cos phi
     Msinm  = spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m); %sin phi
 %     Mcosn  = spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n); %cos theta
@@ -14,7 +14,7 @@ function Madv=adv_strain_mat(settings)
     Msin2n = spdiags(.5i*ones(n,1)*[-1,1], [-2 2], n, n); %sin 2theta
     Msinsqn = spdiags(.5*ones(n,1)*[-1/2,1,-1/2], [-2 0 2], n, n); %sin 2theta 
     
-    Madv = (diagEterm*(1+3*kron(Mcos2n,speye(m)))...
+    Madv = (diagEterm*(speye(m*n)+3*kron(Mcos2n,speye(m)))...
         -12*kron(Msin2n,settings.e13*Mcosm+settings.e23*Msinm)...
         -6*kron(Msinsqn,(settings.e11-settings.e22)*Mcos2m+2*settings.e12*Msin2m))/4;
     Madv = Madv+(...
