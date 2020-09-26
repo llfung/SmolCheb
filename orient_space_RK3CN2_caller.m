@@ -9,15 +9,16 @@
 clear all;
 %% Setting up
 % Parameters
-dt = 0.01;                  % Time step
-tfinal = 16;                % Stopping time
+dt = 0.1;                  % Time step
+tfinal = 50;                % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 32;                     % Spatial discretization - phi
-n = 32;                     % Spaptial discretization - theta
+m = 12;                     % Spatial discretization - phi
+n = 24;                     % Spaptial discretization - theta
 diff_const = 1;             % Diffusion constant
-beta=2.2;                   % Gyrotactic time scale
-S=2.5;                      % Shear time scale
-omg=[2 -1 1];               % Vorticity direction (1,2,3) or (x,y,z)
+B=0.31;
+beta=.21;                   % Gyrotactic time scale
+S=1;                      % Shear time scale
+omg=[0 -1 0];               % Vorticity direction (1,2,3) or (x,y,z)
 
 %Saving to settings struct
 settings.S=S;
@@ -27,9 +28,15 @@ settings.m=m;
 settings.omg1=omg(1);
 settings.omg2=omg(2);
 settings.omg3=omg(3);
+settings.e11=0;
+settings.e12=0;
+settings.e13=1;
+settings.e22=0;
+settings.e23=0;
+settings.e33=0;
 
 %% Initial Condition
-u0 = spherefun.sphharm(0,0)/sqrt(4*pi)+(spherefun.sphharm(6,0) + sqrt(14/11)*spherefun.sphharm(6,5))/sqrt(4*pi)/3;
+u0 = spherefun.sphharm(0,0)/sqrt(4*pi);%+(spherefun.sphharm(6,0) + sqrt(14/11)*spherefun.sphharm(6,5))/sqrt(4*pi)/3;
 % u0 = spherefun.sphharm(6,0) + sqrt(14/11)*spherefun.sphharm(6,5);
 ucoeff=reshape(transpose(coeffs2(u0,m,n)),n*m,1);
 settings.int_const=1.;
@@ -58,7 +65,7 @@ settings.Mint=kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]);
 settings.MintSq=settings.Mint*settings.Mint';
 
 % Advection
-Madv=adv_mat(settings);
+Madv=adv_vor_mat(settings)+B*adv_strain_mat(settings)+settings.beta*adv_gyro_mat(settings);
 
 %Laplacian
 Mlap=lap_mat(settings);

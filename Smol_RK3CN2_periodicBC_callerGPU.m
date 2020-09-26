@@ -8,30 +8,31 @@
 
 %% Setting up
 % Parameters
-Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Vc=0.25;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 Pef=1;                      % Flow Peclet Number (Pe_f)
 % Vsmin=0.2;                  % Minimum sedimentaion (Vs)
-Vsvar=0.2;                  % Vs_max-Vs_min
+Vsvar=0;                  % Vs_max-Vs_min
 
 diff_const = 1;             % Rotational Diffusion constant
 DT=.0;                      % Translational Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
-AR=20;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
-B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
+% AR=1;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
+% B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
+B=0.31;
 
 dt = 0.01;                  % Time step
-tfinal = 20+dt*2;           % Stopping time
+tfinal = 100+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 16;                     % Spatial discretization - phi (even)
-n = 20;                     % Spaptial discretization - theta (even)
+m = 20;                     % Spatial discretization - phi (even)
+n = 32;                     % Spaptial discretization - theta (even)
 N_mesh=100;                 % Spaptial discretization - x
 
 omg=[0,-1,0];               % Vorticity direction (1,2,3) 
 
 % Run saving settings
-saving_rate1=1000;
-saving_rate2=1000;
-saving_rate3=25;
+saving_rate1=1000000;
+saving_rate2=1000000;
+saving_rate3=100;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
 x_sav_location=[1 11 26 31 51];
@@ -57,19 +58,15 @@ x=-1:dx:1-dx;
 % z=cheb.col_pt;
 % D1=(cheb.D(1))';D2=(cheb.D(2))';
 
-%% Initial Condition
-int_const=1.;
-settings.int_const=int_const;
-
-ucoeff0=zeros(n*m,N_mesh);ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
-
 %% Shear Profile
 % U_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
-S_profile=pi*sin(pi*x)*Pef/2; % .5*dW(x)/dx=-pi*sin(pi x)/2
+S_profile=pi*sin(pi*x)*Pef/2; % .5*dW(x)/dx=pi*sin(pi x)/2
 S_profile(1)=0;
-S_profile=gpuArray(S_profile);
+
 % S_profile=x*Pef; % W(x)=-(1-x^2)
 % S_profile=Pef/2*ones(size(x)); % W(x)=x
+
+S_profile=gpuArray(S_profile);
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
 gamma=[8/15 5/12 3/4];
@@ -128,6 +125,14 @@ Mp3 = gpuArray(sparse(complex(full(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n,
 Mp1p3 = kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
 
 MSwim=Vc*Mp1-Vsvar*Mp1p3;
+
+%% Initial Condition
+int_const=1.;
+settings.int_const=int_const;
+
+ucoeff0=zeros(n*m,N_mesh);
+ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
+
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
 
@@ -162,7 +167,7 @@ ucoeff=gpuArray(complex(ucoeff0));
 adv_p_coeff   =gpuArray(complex(zeros(n*m,N_mesh)));
 adv_comb_coeff=gpuArray(complex(zeros(n*m,N_mesh)));
 ucoeff_previous=gpuArray(complex(NaN(n*m,N_mesh,3)));
-ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
+% ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
 
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dx;
@@ -307,42 +312,42 @@ for i = 1:nsteps
     Nint_loc=sum(cell_den_loc,2)*dx;
     
     %% Saving for Post-Processing
-    if ( mod(i, saving_rate1) == 0 )
-        for j=1:length(x_sav_location)
-            u_xloc_save(:,i/saving_rate1,j)=gather(ucoeff(:,x_sav_location(j)));
-        end
-    end
-    
-    %    Plot/Save the solution every saving_rate
-    if ( mod(i, saving_rate2) == 0 )
-        ufull_save(:,:,i/saving_rate2)=gather(ucoeff);
-    end
-    if ( mod(i, saving_rate2) == 2 )&& i~=2 
-        fdt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff./(real(Mint*ucoeff*2*pi))...
-            + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
-            +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
-            -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
-        fndt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff...
-            + ucoeff_previous2(:,:,1))/12 ...
-            +(ucoeff_previous2(:,:,3)...
-            -ucoeff_previous2(:,:,2))*(2/3))/dt;
-    end
-    if ( mod(i, saving_rate2) == 1 )&& i~=1 
-        ucoeff_previous2(:,:,3)=ucoeff;
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-1 )
-        ucoeff_previous2(:,:,2)=ucoeff;
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-2 )
-        ucoeff_previous2(:,:,1)=ucoeff;
-    end
+%     if ( mod(i, saving_rate1) == 0 )
+%         for j=1:length(x_sav_location)
+%             u_xloc_save(:,i/saving_rate1,j)=gather(ucoeff(:,x_sav_location(j)));
+%         end
+%     end
+%     
+%     %    Plot/Save the solution every saving_rate
+%     if ( mod(i, saving_rate2) == 0 )
+%         ufull_save(:,:,i/saving_rate2)=gather(ucoeff);
+%     end
+%     if ( mod(i, saving_rate2) == 2 )&& i~=2 
+%         fdt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff./(real(Mint*ucoeff*2*pi))...
+%             + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
+%             +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
+%             -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
+%         fndt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff...
+%             + ucoeff_previous2(:,:,1))/12 ...
+%             +(ucoeff_previous2(:,:,3)...
+%             -ucoeff_previous2(:,:,2))*(2/3))/dt;
+%     end
+%     if ( mod(i, saving_rate2) == 1 )&& i~=1 
+%         ucoeff_previous2(:,:,3)=ucoeff;
+%     end
+%     if ( mod(i, saving_rate2) == saving_rate2-1 )
+%         ucoeff_previous2(:,:,2)=ucoeff;
+%     end
+%     if ( mod(i, saving_rate2) == saving_rate2-2 )
+%         ucoeff_previous2(:,:,1)=ucoeff;
+%     end
     
     %% On-the-go-Post-Processing
      if ( mod(i, saving_rate3) == 0 )
         cellden_temp=real(Mint*ucoeff*2*pi);
         f=ucoeff./cellden_temp;
-        d2xf=f*Rd2x;
-        dxf=f*Rdx;
+%         d2xf=f*Rd2x;
+%         dxf=f*Rdx;
 %         d2zf=f*Rd2z;
 %         dzf=f*Rdz;
         ex_avg=real(Mint*Mp1*f*(2*pi));
@@ -357,12 +362,12 @@ for i = 1:nsteps
         bx=reshape(temp(1:n*m,1,:),n*m,N_mesh);
         temp=sum(bsxfun(@times,Linv,reshape([bz_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
         bz=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([dxf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        b_DT_p1=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+%         temp=sum(bsxfun(@times,Linv,reshape([dxf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+%         b_DT_p1=reshape(temp(1:n*m,1,:),n*m,N_mesh);
         temp=sum(bsxfun(@times,Linv,reshape([inhomo_p1_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
         f_inhomo_p1=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([d2xf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        f_a=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+%         temp=sum(bsxfun(@times,Linv,reshape([d2xf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+%         f_a=reshape(temp(1:n*m,1,:),n*m,N_mesh);
         
         Dxx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bx,n*m,N_mesh))*(2*pi));
         Dxz(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bz,n*m,N_mesh))*(2*pi));
@@ -373,8 +378,8 @@ for i = 1:nsteps
         ex(i/saving_rate3,:)=gather(ex_avg);
         ez(i/saving_rate3,:)=gather(ez_avg);
                         
-        Va(i/saving_rate3,:)=gather(Mint*(reshape(f_a,n*m,N_mesh))*(2*pi));
-        DDT(i/saving_rate3,:)=gather(Mint*(reshape(b_DT_p1,n*m,N_mesh))*(2*pi));
+%         Va(i/saving_rate3,:)=gather(Mint*(reshape(f_a,n*m,N_mesh))*(2*pi));
+%         DDT(i/saving_rate3,:)=gather(Mint*(reshape(b_DT_p1,n*m,N_mesh))*(2*pi));
 
         cell_den(i/saving_rate3,:)=gather(cellden_temp);
         
@@ -419,7 +424,9 @@ Nint=sum(cell_den,2)*dx;
 S_profile=gather(S_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
+% ex_file_name=['smol_pBC_' num2str(epsilon) 'epsInit_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_homoVS_DiracInit_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name 'GPU.mat'],...
