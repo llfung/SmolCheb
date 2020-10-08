@@ -8,8 +8,8 @@
 
 %% Setting up
 % Parameters
-Vc=0.25;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=1;                      % Flow Peclet Number (Pe_f)
+Vc=.05;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=.5;                      % Flow Peclet Number (Pe_f)
 % Vsmin=0.2;                  % Minimum sedimentaion (Vs)
 Vsvar=0;                  % Vs_max-Vs_min
 
@@ -18,21 +18,21 @@ DT=.0;                      % Translational Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
 % AR=1;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
 % B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
-B=0.31;
+B=0;
 
-dt = 0.01;                  % Time step
-tfinal = 100+dt*2;           % Stopping time
+dt = 0.05;                  % Time step
+tfinal = 1500+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 20;                     % Spatial discretization - phi (even)
+m = 16;                     % Spatial discretization - phi (even)
 n = 32;                     % Spaptial discretization - theta (even)
-N_mesh=100;                 % Spaptial discretization - x
+N_mesh=256;                 % Spaptial discretization - x
 
 omg=[0,-1,0];               % Vorticity direction (1,2,3) 
 
 % Run saving settings
 saving_rate1=1000000;
 saving_rate2=1000000;
-saving_rate3=100;
+saving_rate3=1000;
 
 % x_sav_location=[1 11 21 33 24 3 42 45 48];
 x_sav_location=[1 11 26 31 51];
@@ -67,6 +67,7 @@ S_profile(1)=0;
 % S_profile=Pef/2*ones(size(x)); % W(x)=x
 
 S_profile=gpuArray(S_profile);
+
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
 gamma=[8/15 5/12 3/4];
@@ -120,12 +121,34 @@ Rd2x=gpuArray(Rd2x/dx/dx);
 %p1
 Mp1 = gpuArray(complex(kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))));
 %p3
-Mp3 = gpuArray(sparse(complex(full(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)))))); %e3
+Mp3 = gpuArray(sparse(complex(full(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m))))));
 %p1p3
-Mp1p3 = kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
+Mp1p3 = gpuArray(sparse(complex(full(kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))))));
 
-%Swimming and sedimentation   
+%Swimming and sedimentation
 MSwim=Vc*Mp1-Vsvar*Mp1p3;
+
+%% PS struct
+CPUPS.Mp1=gather(Mp1);
+CPUPS.Mp3=gather(Mp3);
+% CPUPS.Mp1p3=gather(Mp1p3);
+
+CPUPS.Rdx=gather(Rdx);
+CPUPS.Rd2x=gather(Rd2x);
+CPUPS.Mint=gather(Mint);
+CPUPS.MintSq=CPUPS.Mint*CPUPS.Mint';
+
+CPUPS.Mvor=gather(Mvor);
+CPUPS.Mgyro=gather(Mgyro);
+CPUPS.Mlap=gather(Mlap);
+
+CPUPS.S_profile=gather(S_profile);
+
+CPUPS.Nx_mesh=N_mesh;
+CPUPS.m=m;
+CPUPS.n=n;
+CPUPS.Msin2=kron(spdiags(.5i*ones(n,1)*[-1,1], [-2 2], n, n),speye(m));
+CPUPS.dt=dt;
 
 %% Initial Condition
 int_const=1.;
@@ -157,13 +180,6 @@ VDTx=NaN(floor(nsteps/saving_rate3),N_mesh);
 VDTz=NaN(floor(nsteps/saving_rate3),N_mesh);
 DDTxx=NaN(floor(nsteps/saving_rate3),N_mesh);
 DDTzx=NaN(floor(nsteps/saving_rate3),N_mesh);
-
-%% Post-Processing GPU Array
-Linv=NaN(n*m,n*m+1,N_mesh,'gpuArray');
-for j=1:N_mesh
-    Le=S_profile(j)*Mvor+Mgyro-Mlap;
-    Linv(:,:,j)=pinv([full(Le);full(Mint)]);
-end
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
@@ -202,7 +218,7 @@ for i = 1:nsteps
     CFS = helm_inv_k1*reshape(F,helm.n*helm.m,N_mesh);
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);  
-
+    
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dx;
     
@@ -230,8 +246,8 @@ for i = 1:nsteps
 
     CFS = helm_inv_k2*reshape(F,helm.n*helm.m,N_mesh);
 
-    ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);     
-
+    ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);
+    
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dx;
     
@@ -298,73 +314,55 @@ for i = 1:nsteps
     
     %% On-the-go-Post-Processing
      if ( mod(i, saving_rate3) == 0 )
-         
-        f=ucoeff./cell_den_loc;
-%         d2xf=f*Rd2x;
-%         dxf=f*Rdx;
-%         d2zf=f*Rd2z;
-%         dzf=f*Rdz;
-        ex_avg=real(Mint*Mp1*f*(2*pi));
-        ez_avg=real(Mint*Mp3*f*(2*pi));
-        
-        bx_RHS=Mp1*f-ex_avg.*f;
-        bz_RHS=Mp3*f-ez_avg.*f;
-        inhomo_p1_RHS=Mp1*(f*Rdx)-(ex_avg*Rdx).*f;
-%         inhomo_p3_RHS=Mp3*(f*Rdz)-(ez_avg*Rdz).*f;
-        
-        temp=sum(bsxfun(@times,Linv,reshape([bx_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        bx=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([bz_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        bz=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([dxf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        b_DT_p1=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([inhomo_p1_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        f_inhomo_p1=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([d2xf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        f_a=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        
-        Dxx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bx,n*m,N_mesh))*(2*pi));
-        Dxz(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bz,n*m,N_mesh))*(2*pi));
-        Dzx(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(bx,n*m,N_mesh))*(2*pi));
-        Dzz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(bz,n*m,N_mesh))*(2*pi));
-        Vix(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(f_inhomo_p1,n*m,N_mesh))*(2*pi));
-        Viz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(f_inhomo_p1,n*m,N_mesh))*(2*pi));
-        ex(i/saving_rate3,:)=gather(ex_avg);
-        ez(i/saving_rate3,:)=gather(ez_avg);
-                        
-        VDTx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(f_a,n*m,N_mesh))*(2*pi));
-        VDTz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(f_a,n*m,N_mesh))*(2*pi));
-        DDTxx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(b_DT_p1,n*m,N_mesh))*(2*pi));
-        DDTzx(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(b_DT_p1,n*m,N_mesh))*(2*pi));
-
+        cellden_temp=real(Mint*ucoeff*2*pi);
+        f=gather(ucoeff./cell_den_loc);
         cell_den(i/saving_rate3,:)=gather(cell_den_loc);
-        
+        PS_feval(i/saving_rate3)=parfeval(@PS_transformed,12,f,CPUPS);
         disp([num2str(i) '/' num2str(nsteps)]);
     end 
-    if ( mod(i, saving_rate3) == (saving_rate3-2) )
-        ucoeff_previous(:,:,1)=ucoeff;
-    end 
-    if ( mod(i, saving_rate3) == (saving_rate3-1) )
-        ucoeff_previous(:,:,2)=ucoeff;
-    end 
-    if ( mod(i, saving_rate3) == 1 ) && i~=1
-        ucoeff_previous(:,:,3)=ucoeff;
-    end 
-    if ( mod(i, saving_rate3) == 2 ) && i~=2
-        unsteady_RHS=((-ucoeff./(real(Mint*ucoeff*2*pi))...
-            + ucoeff_previous(:,:,1)./(real(Mint*ucoeff_previous(:,:,1)*2*pi)))/12 ...
-            +(ucoeff_previous(:,:,3)./(real(Mint*ucoeff_previous(:,:,3)*2*pi))...
-            -ucoeff_previous(:,:,2)./(real(Mint*ucoeff_previous(:,:,2)*2*pi)))*(2/3))/dt;
-        
-        temp=sum(bsxfun(@times,Linv,reshape([unsteady_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-        f_unsteady=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        
-        Vux((i-2)/saving_rate3,:)=gather(Mint*Mp1*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
-        Vuz((i-2)/saving_rate3,:)=gather(Mint*Mp3*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
-
-    end 
+%     if ( mod(i, saving_rate3) == (saving_rate3-2) )
+%         ucoeff_previous(:,:,1)=ucoeff;
+%     end 
+%     if ( mod(i, saving_rate3) == (saving_rate3-1) )
+%         ucoeff_previous(:,:,2)=ucoeff;
+%     end 
+%     if ( mod(i, saving_rate3) == 1 ) && i~=1
+%         ucoeff_previous(:,:,3)=ucoeff;
+%     end 
+%     if ( mod(i, saving_rate3) == 2 ) && i~=2
+%         unsteady_RHS=((-ucoeff./(real(Mint*ucoeff*2*pi))...
+%             + ucoeff_previous(:,:,1)./(real(Mint*ucoeff_previous(:,:,1)*2*pi)))/12 ...
+%             +(ucoeff_previous(:,:,3)./(real(Mint*ucoeff_previous(:,:,3)*2*pi))...
+%             -ucoeff_previous(:,:,2)./(real(Mint*ucoeff_previous(:,:,2)*2*pi)))*(2/3))/dt;
+%         
+%         temp=sum(bsxfun(@times,Linv,reshape([unsteady_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+%         f_unsteady=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+%         
+%         Vux((i-2)/saving_rate3,:)=gather(Mint*Mp1*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
+%         Vuz((i-2)/saving_rate3,:)=gather(Mint*Mp3*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
+% 
+%     end 
 end
 
+%% ParFeval Data Collection
+for i=1:floor(nsteps/saving_rate3)
+    [idx,ex_avg,ez_avg,Dxx_temp,Dzx_temp,Dxz_temp,Dzz_temp,Vix_temp,Viz_temp,...
+    VDTx_temp,VDTz_temp,DDTxx_temp,DDTzx_temp]=fetchNext(PS_feval);
+     Dxx(idx,:)=Dxx_temp;
+     Dxz(idx,:)=Dxz_temp;
+     Dzx(idx,:)=Dzx_temp;
+     Dzz(idx,:)=Dzz_temp;
+     Vix(idx,:)=Vix_temp;
+     Viz(idx,:)=Viz_temp;
+    VDTx(idx,:)=-DT*VDTx_temp;
+    VDTz(idx,:)=-DT*VDTz_temp;
+
+   DDTxx(idx,:)=-2*DT*DDTxx_temp;
+   DDTzx(idx,:)=-2*DT*DDTzx_temp;
+
+     ex(idx,:)=ex_avg;
+     ez(idx,:)=ez_avg;   
+end
 
 %% Surface Integral Conservation check
 t1=dt*saving_rate1:dt*saving_rate1:tfinal;
@@ -372,11 +370,17 @@ t2=dt*saving_rate2:dt*saving_rate2:tfinal;
 t3=dt*saving_rate3:dt*saving_rate3:tfinal;
 
 Nint=sum(cell_den,2)*dx;
+% Nint=NaN(size(t3));
+% for i=1:length(t3)
+%     Nint(i)=cheb.cheb_int(cell_den(i,:)');
+% end
 
 S_profile=gather(S_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
+% ex_file_name=['smol_pBC_' num2str(epsilon) 'epsInit_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_homoVS_DiracInit_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name 'GPU.mat'],...

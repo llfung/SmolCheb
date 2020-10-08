@@ -58,19 +58,16 @@ z=-1:dz:1-dz;
 % z=cheb.col_pt;
 % D1=(cheb.D(1))';D2=(cheb.D(2))';
 
-%% Initial Condition
-int_const=1.;
-settings.int_const=int_const;
-
-ucoeff0=zeros(n*m,N_mesh);ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
-
 %% Shear Profile
 % U_profile=(cos(pi*z)+1)*Pef;   % W(x)=cos(pi x)+1
 S_profile=-pi*sin(pi*z)*Pef/2; % .5*dW(x)/dx=-pi*sin(pi x)/2
 S_profile(1)=0;
-S_profile=gpuArray(S_profile);
+
 % S_profile=x*Pef; % W(x)=-(1-x^2)
 % S_profile=Pef/2*ones(size(x)); % W(x)=x
+
+S_profile=gpuArray(S_profile);
+
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
 gamma=[8/15 5/12 3/4];
@@ -125,10 +122,18 @@ Rd2z=gpuArray(Rd2z/dz/dz);
 Mp1 = gpuArray(complex(kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))));
 %p3
 Mp3 = gpuArray(sparse(complex(full(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)))))); %e3
+%p3p3
 Mp3sq = gpuArray(sparse(complex(full(kron(spdiags(ones(n,1)*[.25,.5,.25], [-2 0 2], n, n),speye(m)))))); %e3
 
 %Swimming and sedimentation
 MSwim=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-Vsvar*Mp3sq;
+
+%% Initial Condition
+int_const=1.;
+settings.int_const=int_const;
+
+ucoeff0=zeros(n*m,N_mesh);
+ucoeff0(m*n/2+m/2+1,:)=1/8/pi;
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -143,30 +148,30 @@ Dxx=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dzx=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dxz=NaN(floor(nsteps/saving_rate3),N_mesh);
 Dzz=NaN(floor(nsteps/saving_rate3),N_mesh);
-% Vix=NaN(floor(nsteps/saving_rate3),N_mesh);
+Vix=NaN(floor(nsteps/saving_rate3),N_mesh);
 Viz=NaN(floor(nsteps/saving_rate3),N_mesh);
 Vux=NaN(floor(nsteps/saving_rate3),N_mesh);
 Vuz=NaN(floor(nsteps/saving_rate3),N_mesh);
 ex=NaN(floor(nsteps/saving_rate3),N_mesh);
 ez=NaN(floor(nsteps/saving_rate3),N_mesh);
-Va=NaN(floor(nsteps/saving_rate3),N_mesh);
-DDT=NaN(floor(nsteps/saving_rate3),N_mesh);
+VDTx=NaN(floor(nsteps/saving_rate3),N_mesh);
+VDTz=NaN(floor(nsteps/saving_rate3),N_mesh);
+DDTxz=NaN(floor(nsteps/saving_rate3),N_mesh);
+DDTzz=NaN(floor(nsteps/saving_rate3),N_mesh);
 
 %% Post-Processing GPU Array
-% Linv=NaN(n*m,n*m+1,N_mesh,'gpuArray');
-% for j=1:N_mesh
-%     Le=S_profile(j)*Mvor+Mgyro-Mlap;
-%     Linv(:,:,j)=pinv([full(Le);full(Mint)]);
-% end
-
-
+Linv=NaN(n*m,n*m+1,N_mesh,'gpuArray');
+for j=1:N_mesh
+    Le=S_profile(j)*Mvor+Mgyro-Mlap;
+    Linv(:,:,j)=pinv([full(Le);full(Mint)]);
+end
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
 adv_p_coeff   =gpuArray(complex(zeros(n*m,N_mesh)));
 adv_comb_coeff=gpuArray(complex(zeros(n*m,N_mesh)));
 ucoeff_previous=gpuArray(complex(NaN(n*m,N_mesh,3)));
-ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
+% ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
 
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dz;
@@ -199,23 +204,6 @@ for i = 1:nsteps
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);  
     
-%     for j=1:N_mesh
-%         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
-%         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
-%         
-%         lap_coeff=Mlap*ucoeff(:,j);
-%         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
-%         
-%         swim_coeff=Vc*Mp3*dzu_coeff(:,j);
-%         
-%         DT_coeff=DT*dz2u_coeff(:,j);
-%         
-%         adv_p_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
-% 
-%         rhs_coeff = (-K2/alpha(k))*ucoeff(:,j)-lap_coeff+(1/diff_const/alpha(k)*gamma(k))*adv_p_coeff(:,j)...
-%             -(Kp/alpha(k)*(int_const-Nint_loc))*Mint'.*ucoeff(:,j);
-%         ucoeff(:,j) = helmholtz_calGPU(rhs_coeff, -K2/alpha(k),helm,helm_inv_k1);
-%     end
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dz;
     
@@ -244,23 +232,7 @@ for i = 1:nsteps
     CFS = helm_inv_k2*reshape(F,helm.n*helm.m,N_mesh);
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);     
-%     for j=1:N_mesh
-%         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
-%         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
-%         
-%         lap_coeff=Mlap*ucoeff(:,j);
-%         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
-%         
-%         swim_coeff=Vc*Mp3*dzu_coeff(:,j);
-%         
-%         DT_coeff=DT*dz2u_coeff(:,j);
-%         
-%         adv_comb_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
-% 
-%         rhs_coeff = (-K2/alpha(k))*ucoeff(:,j)-lap_coeff+(1/diff_const/alpha(k)*gamma(k))*adv_comb_coeff(:,j)+(1/diff_const/alpha(k)*rho(k))*adv_p_coeff(:,j)...
-%             -(Kp/alpha(k)*(int_const-Nint_loc))*Mint'.*ucoeff(:,j); %#ok<*PFBNS>
-%         ucoeff(:,j) = helmholtz_calGPU(rhs_coeff, -K2/alpha(k),helm,helm_inv_k2);
-%     end
+
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dz;
     
@@ -290,123 +262,107 @@ for i = 1:nsteps
     CFS = helm_inv_k3*reshape(F,helm.n*helm.m,N_mesh);
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);     
-%     for j=1:N_mesh
-%         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
-%         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
-%         
-%         lap_coeff=Mlap*ucoeff(:,j);
-%         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
-%         
-%         swim_coeff=Vc*Mp3*dzu_coeff(:,j);
-%         
-%         DT_coeff=DT*dz2u_coeff(:,j);
-%         
-%         adv_comb_coeff(:,j)=adv_coeff+swim_coeff-DT_coeff;
-% 
-%         rhs_coeff = (-K2/alpha(k))*ucoeff(:,j)-lap_coeff+(1/diff_const/alpha(k)*gamma(k))*adv_comb_coeff(:,j)+(1/diff_const/alpha(k)*rho(k))*adv_p_coeff(:,j)...
-%             -(Kp/alpha(k)*(int_const-Nint_loc))*Mint'.*ucoeff(:,j);
-%         ucoeff(:,j) = helmholtz_calGPU(rhs_coeff, -K2/alpha(k),helm,helm_inv_k3);
-%     end
+
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dz;
     
     %% Saving for Post-Processing
-    if ( mod(i, saving_rate1) == 0 )
-        for j=1:length(z_sav_location)
-            u_zloc_save(:,i/saving_rate1,j)=gather(ucoeff(:,z_sav_location(j)));
-        end
-    end
-    
-    %    Plot/Save the solution every saving_rate
-    if ( mod(i, saving_rate2) == 0 )
-        ufull_save(:,:,i/saving_rate2)=gather(ucoeff);
-    end
-    if ( mod(i, saving_rate2) == 2 )&& i~=2 
-        fdt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff./(real(Mint*ucoeff*2*pi))...
-            + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
-            +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
-            -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
-        fndt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff...
-            + ucoeff_previous2(:,:,1))/12 ...
-            +(ucoeff_previous2(:,:,3)...
-            -ucoeff_previous2(:,:,2))*(2/3))/dt;
-    end
-    if ( mod(i, saving_rate2) == 1 )&& i~=1 
-        ucoeff_previous2(:,:,3)=ucoeff;
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-1 )
-        ucoeff_previous2(:,:,2)=ucoeff;
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-2 )
-        ucoeff_previous2(:,:,1)=ucoeff;
-    end
+%     if ( mod(i, saving_rate1) == 0 )
+%         for j=1:length(z_sav_location)
+%             u_zloc_save(:,i/saving_rate1,j)=gather(ucoeff(:,z_sav_location(j)));
+%         end
+%     end
+%     
+%     %    Plot/Save the solution every saving_rate
+%     if ( mod(i, saving_rate2) == 0 )
+%         ufull_save(:,:,i/saving_rate2)=gather(ucoeff);
+%     end
+%     if ( mod(i, saving_rate2) == 2 )&& i~=2 
+%         fdt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff./(real(Mint*ucoeff*2*pi))...
+%             + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
+%             +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
+%             -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
+%         fndt_full_save(:,:,(i-2)/saving_rate2)=gather((-ucoeff...
+%             + ucoeff_previous2(:,:,1))/12 ...
+%             +(ucoeff_previous2(:,:,3)...
+%             -ucoeff_previous2(:,:,2))*(2/3))/dt;
+%     end
+%     if ( mod(i, saving_rate2) == 1 )&& i~=1 
+%         ucoeff_previous2(:,:,3)=ucoeff;
+%     end
+%     if ( mod(i, saving_rate2) == saving_rate2-1 )
+%         ucoeff_previous2(:,:,2)=ucoeff;
+%     end
+%     if ( mod(i, saving_rate2) == saving_rate2-2 )
+%         ucoeff_previous2(:,:,1)=ucoeff;
+%     end
     
     %% On-the-go-Post-Processing
      if ( mod(i, saving_rate3) == 0 )
-%         cellden_temp=real(Mint*ucoeff*2*pi);
-%         f=ucoeff./cellden_temp;
-% %         d2xf=f*Rd2x;
-% %         dxf=f*Rdx;
-%         d2zf=f*Rd2z;
-%         dzf=f*Rdz;
-%         ex_avg=real(Mint*Mp1*f*(2*pi));
-%         ez_avg=real(Mint*Mp3*f*(2*pi));
-%         
-%         bx_RHS=Mp1*f-ex_avg.*f;
-%         bz_RHS=Mp3*f-ez_avg.*f;
-% %         inhomo_p1_RHS=Mp1*(f*Rdx)-(ex_avg*Rdx).*f;
-%         inhomo_p3_RHS=Mp3*(f*Rdz)-(ez_avg*Rdz).*f;
-%         
-%         temp=sum(bsxfun(@times,Linv,reshape([bx_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-%         bx=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-%         temp=sum(bsxfun(@times,Linv,reshape([bz_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-%         bz=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-%         temp=sum(bsxfun(@times,Linv,reshape([dzf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-%         b_DT_p3=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-%         temp=sum(bsxfun(@times,Linv,reshape([inhomo_p3_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-%         f_inhomo_p3=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-%         temp=sum(bsxfun(@times,Linv,reshape([d2zf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-%         f_a=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-%         
-%         Dxx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bx,n*m,N_mesh))*(2*pi));
-%         Dxz(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bz,n*m,N_mesh))*(2*pi));
-%         Dzx(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(bx,n*m,N_mesh))*(2*pi));
-%         Dzz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(bz,n*m,N_mesh))*(2*pi));
-% %         Vix(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(f_inhomo_p1,n*m,N_mesh))*(2*pi));
-%         Viz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(f_inhomo_p3,n*m,N_mesh))*(2*pi));
-%         ex(i/saving_rate3,:)=gather(ex_avg);
-%         ez(i/saving_rate3,:)=gather(ez_avg);
-%                         
-%         Va(i/saving_rate3,:)=gather(Mint*(reshape(f_a,n*m,N_mesh))*(2*pi));
-%         DDT(i/saving_rate3,:)=gather(Mint*(reshape(b_DT_p3,n*m,N_mesh))*(2*pi));
-% 
-%         cell_den(i/saving_rate3,:)=gather(cellden_temp);
-%         
+         
+        f=ucoeff./cell_den_loc;
+%         d2xf=f*Rd2x;
+%         dxf=f*Rdx;
+        d2zf=f*Rd2z;
+        dzf=f*Rdz;
+        ex_avg=real(Mint*Mp1*f*(2*pi));
+        ez_avg=real(Mint*Mp3*f*(2*pi));
+        
+        bx_RHS=Mp1*f-ex_avg.*f;
+        bz_RHS=Mp3*f-ez_avg.*f;
+%         inhomo_p1_RHS=Mp1*(f*Rdx)-(ex_avg*Rdx).*f;
+        inhomo_p3_RHS=Mp3*(f*Rdz)-(ez_avg*Rdz).*f;
+        
+        temp=sum(bsxfun(@times,Linv,reshape([bx_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+        bx=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+        temp=sum(bsxfun(@times,Linv,reshape([bz_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+        bz=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+        temp=sum(bsxfun(@times,Linv,reshape([dzf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+        b_DT_p3=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+        temp=sum(bsxfun(@times,Linv,reshape([inhomo_p3_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+        f_inhomo_p3=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+        temp=sum(bsxfun(@times,Linv,reshape([d2zf;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+        f_a=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+        
+        Dxx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bx,n*m,N_mesh))*(2*pi));
+        Dxz(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(bz,n*m,N_mesh))*(2*pi));
+        Dzx(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(bx,n*m,N_mesh))*(2*pi));
+        Dzz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(bz,n*m,N_mesh))*(2*pi));
+        Vix(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(f_inhomo_p3,n*m,N_mesh))*(2*pi));
+        Viz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(f_inhomo_p3,n*m,N_mesh))*(2*pi));
+        ex(i/saving_rate3,:)=gather(ex_avg);
+        ez(i/saving_rate3,:)=gather(ez_avg);
+                        
+        VDTx(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(f_a,n*m,N_mesh))*(2*pi));
+        VDTz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(f_a,n*m,N_mesh))*(2*pi));
+        DDTxz(i/saving_rate3,:)=gather(Mint*(Mp1*reshape(b_DT_p3,n*m,N_mesh))*(2*pi));
+        DDTzz(i/saving_rate3,:)=gather(Mint*(Mp3*reshape(b_DT_p3,n*m,N_mesh))*(2*pi));
+    
         cell_den(i/saving_rate3,:)=gather(cell_den_loc);
         disp([num2str(i) '/' num2str(nsteps)]);
     end 
-%     if ( mod(i, saving_rate3) == (saving_rate3-2) )
-%         ucoeff_previous(:,:,1)=ucoeff;
-%     end 
-%     if ( mod(i, saving_rate3) == (saving_rate3-1) )
-%         ucoeff_previous(:,:,2)=ucoeff;
-%     end 
-%     if ( mod(i, saving_rate3) == 1 ) && i~=1
-%         ucoeff_previous(:,:,3)=ucoeff;
-%     end 
-%     if ( mod(i, saving_rate3) == 2 ) && i~=2
-%         unsteady_RHS=((-ucoeff./(real(Mint*ucoeff*2*pi))...
-%             + ucoeff_previous(:,:,1)./(real(Mint*ucoeff_previous(:,:,1)*2*pi)))/12 ...
-%             +(ucoeff_previous(:,:,3)./(real(Mint*ucoeff_previous(:,:,3)*2*pi))...
-%             -ucoeff_previous(:,:,2)./(real(Mint*ucoeff_previous(:,:,2)*2*pi)))*(2/3))/dt;
-%         
-%         temp=sum(bsxfun(@times,Linv,reshape([unsteady_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
-%         f_unsteady=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-%         
-%         Vux((i-2)/saving_rate3,:)=gather(Mint*Mp1*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
-%         Vuz((i-2)/saving_rate3,:)=gather(Mint*Mp3*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
-% 
-%     end 
+    if ( mod(i, saving_rate3) == (saving_rate3-2) )
+        ucoeff_previous(:,:,1)=ucoeff;
+    end 
+    if ( mod(i, saving_rate3) == (saving_rate3-1) )
+        ucoeff_previous(:,:,2)=ucoeff;
+    end 
+    if ( mod(i, saving_rate3) == 1 ) && i~=1
+        ucoeff_previous(:,:,3)=ucoeff;
+    end 
+    if ( mod(i, saving_rate3) == 2 ) && i~=2
+        unsteady_RHS=((-ucoeff./(real(Mint*ucoeff*2*pi))...
+            + ucoeff_previous(:,:,1)./(real(Mint*ucoeff_previous(:,:,1)*2*pi)))/12 ...
+            +(ucoeff_previous(:,:,3)./(real(Mint*ucoeff_previous(:,:,3)*2*pi))...
+            -ucoeff_previous(:,:,2)./(real(Mint*ucoeff_previous(:,:,2)*2*pi)))*(2/3))/dt;
+        
+        temp=sum(bsxfun(@times,Linv,reshape([unsteady_RHS;zeros(1,N_mesh,'gpuArray')],1,n*m+1,N_mesh)),2);
+        f_unsteady=reshape(temp(1:n*m,1,:),n*m,N_mesh);
+        
+        Vux((i-2)/saving_rate3,:)=gather(Mint*Mp1*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
+        Vuz((i-2)/saving_rate3,:)=gather(Mint*Mp3*(reshape(f_unsteady,n*m,N_mesh))*(2*pi));
+
+    end 
 end
 
 
@@ -416,10 +372,6 @@ t2=dt*saving_rate2:dt*saving_rate2:tfinal;
 t3=dt*saving_rate3:dt*saving_rate3:tfinal;
 
 Nint=sum(cell_den,2)*dz;
-% Nint=NaN(size(t3));
-% for i=1:length(t3)
-%     Nint(i)=cheb.cheb_int(cell_den(i,:)');
-% end
 
 S_profile=gather(S_profile);
 Kp=gather(Kp);
@@ -433,7 +385,7 @@ save([ex_file_name 'GPU.mat'],...
     'saving_rate1','saving_rate2','saving_rate3',...
     't1','t2','t3','Nint','cell_den',...
     'ufull_save','u_zloc_save','z_sav_location','ucoeff','ucoeff0',...
-    'Dxx','Dxz','Dzx','Dzz','Viz','Vux','ex','Vuz','ez','DDT','Va',...
+    'Dxx','Dxz','Dzx','Dzz','Vix','Viz','Vux','Vuz','ex','ez','DDTxz','DDTzz','VDTx','VDTz',...
     'fdt_full_save','fndt_full_save','-v7.3');
 
 % exit
