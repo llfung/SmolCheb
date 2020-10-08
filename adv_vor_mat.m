@@ -11,7 +11,7 @@ function Madv=adv_vor_mat(settings)
         -kron(M_n_cotn,spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m)*spdiags((-m/2:m/2-1)'*1i,0, m, m));
     Mvor2 = kron(spdiags((-n/2:n/2-1)'*1i,0, n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))...
         -kron(M_n_cotn,spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m)*spdiags((-m/2:m/2-1)'*1i,0, m, m));
-    Mvor3 = -kron(spdiags((-n/2:n/2-1)'*1i,0, n, n),speye(m));
+    Mvor3 = kron(speye(n),spdiags((-m/2:m/2-1)'*1i,0, m, m));
 % end
 
     Madv=(settings.omg1*Mvor1+settings.omg2*Mvor2+settings.omg3*Mvor3);
