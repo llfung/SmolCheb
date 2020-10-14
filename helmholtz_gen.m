@@ -51,32 +51,45 @@ end
 m = m + mod(m,2);
 
 % Construct useful spectral matrices:
-helm_mats.Im = speye(m);
+helm_mats.Im = (speye(m));
 
 % Please note that DF1m here is different than trigspec.diff(m,1) because we
 % take the coefficient space point-of-view and set the (1,1) entry to be
 % nonzero.
-helm_mats.DF1m = diffmat_internal(m, 1, 1);
-helm_mats.DF2m = diffmat_internal(m, 2);
-helm_mats.DF2n = diffmat_internal(n, 2);
-
+DF1m = diffmat_internal(m, 1, 1);
+DF2m = diffmat_internal(m, 2);
+helm_mats.DF2ndiag= full(diag(diffmat_internal(n, 2)));
 % Multiplication for sin(theta).*cos(theta):
 % Below is equivalent to
-helm_mats.Mcossin = spdiags(.25i*[-ones(m, 1) ones(m, 1)], [-2 2], m, m);
+Mcossin = (spdiags(.25i*[-ones(m, 1) ones(m, 1)], [-2 2], m, m));
 
 % Multiplication for sin(theta)^2:
 % Below is equivalent to
-helm_mats.Msin2 = spdiags(.5*[-.5*ones(m, 1) ones(m, 1) -.5*ones(m, 1)], [-2 0 2], m, m);
+Msin2 = (spdiags(.5*[-.5*ones(m, 1) ones(m, 1) -.5*ones(m, 1)], [-2 0 2], m, m));
 
 % Calculate the integral constraint constant:
 helm_mats.k = floor(n/2)+1;
 floorm = floor(m/2);helm_mats.floorm=floorm;
 mm = (-floorm:ceil(m/2)-1);
-helm_mats.en = 2*pi*(1+exp(1i*pi*mm))./(1-mm.^2);
-helm_mats.en([floorm, floorm + 2]) = 0;
+en=2*pi*(1+exp(1i*pi*mm))./(1-mm.^2);
+en([floorm, floorm + 2]) = 0;
+helm_mats.en = (en);
 
 helm_mats.m=m;
 helm_mats.n=n;
+helm_mats.ii_zeroth_up=[1:helm_mats.floorm];
+helm_mats.ii_zeroth_low=[ helm_mats.floorm+2:helm_mats.m];
+L1=Msin2*DF2m + Mcossin*DF1m;
+L2=Msin2;
+helm_mats.L1=L1;
+helm_mats.L2=L2;
+
+L1(helm_mats.floorm+1,:)=0;
+L2(helm_mats.floorm+1,:)=en;
+
+helm_mats.L1_zeroth=L1;
+helm_mats.L2_zeroth=L2;
+
 end
 
 
