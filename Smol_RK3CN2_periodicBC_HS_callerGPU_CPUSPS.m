@@ -5,34 +5,34 @@
 % Laplacian term in CN2. Implicit matrix inversion is done using the
 % Spherefun Helmholtz Solver (only slightly modified to remove
 % chebfun-based activiities). 
-
+gpuDevice(2);
 %% Setting up
 % Parameters
-Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=8;                      % Flow Peclet Number (Pe_f)
+Vc=0.25;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=1;                      % Flow Peclet Number (Pe_f)
 Vsmin=0.;                  % Minimum sedimentaion (Vs)
 Vsvar=0.;                  % Vs_max-Vs_min
 
 diff_const = 1;             % Rotational Diffusion constant
 DT=.0;                      % Translational Diffusion constant
-beta=2.2;                   % Gyrotactic time scale
+beta=0.21;                   % Gyrotactic time scale
 % AR=15;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
 % B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
-B=0.;
+B=0.31;
 
 dt = 0.002;                  % Time step
-tfinal = 60+dt*2;           % Stopping time
+tfinal = 4;%+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 16;                     % Spatial discretization - phi (even)
-n = 24;                     % Spaptial discretization - theta (even)
-N_mesh=128;                 % Spaptial discretization - z
+m = 10;                     % Spatial discretization - phi (even)
+n = 20;                     % Spaptial discretization - theta (even)
+N_mesh=100;                 % Spaptial discretization - z
 
 omg=[0,1,0];                % Vorticity direction (1,2,3) 
 
 % Run saving settings
 saving_rate1=100000000;
 saving_rate2=100000000;
-saving_rate3=5000;
+saving_rate3=500;
 
 z_sav_location=[1 11 21 33 24 42 45 48 51];
 % z_sav_location=[1 21 41 61 81 101 121 129];
@@ -110,6 +110,12 @@ helm_inv_k1=helmholtz_precalGPU( -K2/alpha(1),helm);
 helm_inv_k2=helmholtz_precalGPU( -K2/alpha(2),helm);
 helm_inv_k3=helmholtz_precalGPU( -K2/alpha(3),helm);
 
+helm_CPUPS=helmholtz_gen( n, m);
+helm_CPUPS.helm_inv_k1=helmholtz_precal( -K2/alpha(1),helm_CPUPS);
+helm_CPUPS.helm_inv_k2=helmholtz_precal( -K2/alpha(2),helm_CPUPS);
+helm_CPUPS.helm_inv_k3=helmholtz_precal( -K2/alpha(3),helm_CPUPS);
+helm_CPUPS.dt=dt;
+
 %Dx
 Rdz=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
 Rdz=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rdz);
@@ -148,7 +154,6 @@ CPUPS.Nz_mesh=N_mesh;
 CPUPS.m=m;
 CPUPS.n=n;
 CPUPS.Msin2=kron(spdiags(.5i*ones(n,1)*[-1,1], [-2 2], n, n),speye(m));
-CPUPS.dt=dt;
 
 %% Initial Condition
 int_const=1.;
@@ -317,7 +322,7 @@ for i = 1:nsteps
         cellden_temp=real(Mint*ucoeff*2*pi);
         f=gather(ucoeff./cell_den_loc);
         cell_den(i/saving_rate3,:)=gather(cell_den_loc);
-        PS_feval(i/saving_rate3)=parfeval(@PS_transformedHS,12,f,CPUPS);
+        PS_feval(i/saving_rate3)=parfeval(@PS_transformedHS,12,f,CPUPS,helm_CPUPS);
         disp([num2str(i) '/' num2str(nsteps)]);
     end 
 %     if ( mod(i, saving_rate3) == (saving_rate3-2) )
