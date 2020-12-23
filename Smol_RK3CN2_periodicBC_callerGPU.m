@@ -300,8 +300,8 @@ for i = 1:nsteps
      if ( mod(i, saving_rate3) == 0 )
          
         f=ucoeff./cell_den_loc;
-%         d2xf=f*Rd2x;
-%         dxf=f*Rdx;
+        d2xf=f*Rd2x;
+        dxf=f*Rdx;
 %         d2zf=f*Rd2z;
 %         dzf=f*Rdz;
         ex_avg=real(Mint*Mp1*f*(2*pi));
