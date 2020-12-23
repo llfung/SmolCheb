@@ -3,7 +3,7 @@
 % Assuming parabolic profile in vertical flow Pef W(x)=(1-x^2)*Pef
 % S defined as (-Pef/2)* W'(x)
 
-par=parpool(16);
+% par=parpool(16);
 clear all
 
 Pef_array=[0.1:0.1:16 16.25:0.25:20 20.5:0.5:32 34:2:128 132:4:256 2.^(9:14)]; 
@@ -46,7 +46,7 @@ b_endings=[1 settings.n_theta settings.n_theta+1 2*settings.n_theta 2*settings.n
 
 settings.int=kron(settings.integrad,ones(1,settings.n_phi)/settings.n_phi);
 %% Define input parameters
-settings.beta=0;
+settings.beta=0.21;
 
 % Preparing Struct
 G11=0;
@@ -79,16 +79,16 @@ N_mesh=2048;
 Pef=Pef_array(jjj);
 
 dx=2/(N_mesh);
-x=-1:dx:1;
+x=-1-3*dx:dx:1+2*dx;
 
-S_loop=pi*sin(pi*x)*Pef/2;
-Sp_loop=pi^2*cos(pi*x)*Pef/2;
-% S_loop=x*Pef;
-% Sp_loop=Pef*ones(size(x));
+% S_loop=pi*sin(pi*x)*Pef;
+% Sp_loop=pi^2*cos(pi*x)*Pef;
+S_loop=x*Pef;
+Sp_loop=Pef*ones(size(x));
 
-Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
-Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rdx);
-
+% Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
+% Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rdx);
+Rdx=spdiags(ones(N_mesh+6,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh+6,N_mesh+6);
 Rdx=Rdx/dx;
 
 % Looping Mesh
@@ -143,8 +143,8 @@ parfor ii=1:N_loop
     % In (1,2,3) local Coordinate
     e1_array(ii)=ebracket.e1;
     e2_array(ii)=ebracket.e2;
-    e3_array(ii)=ebracket.e3;    
-  
+    e3_array(ii)=ebracket.e3;
+        
     %% b Euler
     RHS_b1_euler=f0.*(e_all_field(:,:,1)-ebracket.e1);RHS_b1_euler(b_endings(1:2),:)=0;
     RHS_b2_euler=f0.*(e_all_field(:,:,2)-ebracket.e2);RHS_b2_euler(b_endings(1:2),:)=0;
@@ -238,7 +238,15 @@ parfor ii=1:N_loop
 end
 
 %% Saving
-name=['Asymp_beta_' num2str(settings.beta) 'B_' num2str(settings.B) 'Pef_' num2str(Pef)];
+name=['Asymp_para_beta_' num2str(settings.beta) 'B_' num2str(settings.B) 'Pef_' num2str(Pef)];
+x=x(4:end-3);
+Vc1=Vc1(4:end-3);
+rese_array=rese_array(4:end-3,:);
+e1_array=e1_array(4:end-3);
+e2_array=e2_array(4:end-3);
+e3_array=e3_array(4:end-3);
+S_loop=S_loop(4:end-3);
+Sp_loop=Sp_loop(4:end-3);
 clearvars settings e_all_field e1_field e2_field e3_field par;
 save([name '.mat']);
 end
