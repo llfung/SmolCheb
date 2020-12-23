@@ -14,23 +14,24 @@
 clear all;
 %% Setting up
 % Parameters
-Vc=1;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Vc=0.25;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 Pef=1;                      % Flow Peclet Number (Pe_f)
-% Vsmin=0.2;                  % Minimum sedimentaion (Vs)
-Vsvar=0.2;                  % Vs_max-Vs_min
+% Vsmin=0.;                  % Minimum sedimentaion (Vs)
+Vsvar=0.;                  % Vs_max-Vs_min
 
 diff_const = 1;             % Rotational Diffusion constant
 DT=.0;                      % Translational Diffusion constant
 beta=2.2;                   % Gyrotactic time scale
-AR=20;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
-B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
+% AR=20;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
+% B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
+B=0.31;
 
 dt = 0.01;                  % Time step
-tfinal = 20+dt*2;           % Stopping time
+tfinal = 100+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 16;                     % Spatial discretization - phi (even)
-n = 20;                     % Spaptial discretization - theta (even)
-N_mesh=100;                 % Spaptial discretization - x
+m = 20;                     % Spatial discretization - phi (even)
+n = 32;                     % Spaptial discretization - theta (even)
+N_mesh=128;                 % Spaptial discretization - x
 
 omg=[0,-1,0];               % Vorticity direction (1,2,3) 
 
