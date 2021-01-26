@@ -9,8 +9,8 @@
 % parpool(4);
 %% Setting up
 % Parameters
-Vc=.001;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=.5;                      % Flow Peclet Number (Pe_f)
+Vc=.05;                       % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Pef=2.5;                      % Flow Peclet Number (Pe_f)
 Vsmin=0;                  % Minimum sedimentaion (Vs)
 Vsvar=0;                  % Vs_max-Vs_min
 
@@ -20,17 +20,21 @@ beta=2.2;                   % Gyrotactic time scale
 AR=1;                      % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
 B=(AR^2-1)/(AR^2+1);        % Bretherton Constant of swimmer (a.k.a. alpha0)
 
-dt = 0.01;                  % Time step
-tfinal = 50+dt*2;           % Stopping time
+dt = 0.005;                  % Time step
+tfinal = 60+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 6;                     % Spatial discretization - phi (even)
-n = 12;                     % Spaptial discretization - theta (even)
-Nx_mesh=128;                % Spaptial discretization - x
-Nz_mesh=512;                % Spaptial discretization - z
+m = 12;                     % Spatial discretization - phi (even)
+n = 20;                     % Spaptial discretization - theta (even)
+Nx_mesh=160;                % Spaptial discretization - x
+Nz_mesh=640;                % Spaptial discretization - z
+
+x_width=2;
+z_width=8;
+epsInit=0.005;
 
 % Run saving settings
-saving_rate2=100000;
-saving_rate3=10;
+saving_rate2=200;
+saving_rate3=50;
 
 %Saving to settings struct
 settings.beta=beta;
@@ -44,10 +48,10 @@ settings.e22=0;
 settings.e23=0;
 
 %% 2D-domain Meshing
-dx=2/(Nx_mesh);
-x=-1:dx:1-dx;
-dz=8/(Nz_mesh);
-z=(-4:dz:4-dz)';
+dx=x_width/(Nx_mesh);
+x=-x_width/2:dx:x_width/2-dx;
+dz=z_width/(Nz_mesh);
+z=(-z_width/2:dz:z_width/2-dz)';
 
 %Dx
 Rdxx=spdiags(ones(Nx_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],Nx_mesh,Nx_mesh);
@@ -85,7 +89,7 @@ W_profile=reshape(ones(size(z))*x,1,[])*Pef;
 omg2_profile=reshape(ones(size(z))*-ones(size(x))*Pef/2,1,[]); % -.5*dW(x)/dx=-pi*sin(pi x)/2
 
 e11_profile=zeros(1,Nz_mesh*Nx_mesh);
-e13_profile=zeros(1,Nz_mesh*Nx_mesh);
+e13_profile=reshape(ones(size(z))*ones(size(x))*Pef/2,1,[]); % .5*dW(x)/dx=-pi*sin(pi x)/2
 e33_profile=zeros(1,Nz_mesh*Nx_mesh);
 
 %% RK3 coeff and constants
@@ -118,15 +122,21 @@ Kp=settings.Kp;
 % Advection
 % Madv=adv_mat(settings);
 % Mvor=gpuArray(complex(adv_vor_mat(settings)));
+% settings.e11=1;settings.e13=0;settings.e33=0;
+% Me11=gpuArray(complex(B*adv_strain_mat(settings)));
+% settings.e11=0;settings.e13=1;settings.e33=0;
+% Me13=gpuArray(complex(B*adv_strain_mat(settings)));
+% settings.e11=0;settings.e13=0;settings.e33=1;
+% Me33=gpuArray(complex(B*adv_strain_mat(settings)));
 % Mgyro=gpuArray(complex(settings.beta*adv_gyro_mat(settings)));
 %For strange behaviour in MATLAB ver < R2020
 Mvor=gpuArray(sparse(complex(full(adv_vor_mat(settings)))));
 settings.e11=1;settings.e13=0;settings.e33=0;
-Me11=B*adv_strain_mat(settings);
+Me11=gpuArray(sparse(complex(full(B*adv_strain_mat(settings)))));
 settings.e11=0;settings.e13=1;settings.e33=0;
-Me13=B*adv_strain_mat(settings);
+Me13=gpuArray(sparse(complex(full(B*adv_strain_mat(settings)))));
 settings.e11=0;settings.e13=0;settings.e33=1;
-Me33=B*adv_strain_mat(settings);
+Me33=gpuArray(sparse(complex(full(B*adv_strain_mat(settings)))));
 Mgyro=gpuArray(sparse(complex(full(settings.beta*adv_gyro_mat(settings)))));
 
 %Laplacian
@@ -193,9 +203,8 @@ Nint_loc=real(Mint*ucoeff*2*pi);
 for i = 1:nsteps
     %% RK step 1
     k=1;
-    % Par-For Version
-    
-    adv_coeff=Pef/2*(Mvor*ucoeff)+Mgyro*ucoeff;
+
+    adv_coeff=Pef/2*((Me13-Mvor)*ucoeff)+Mgyro*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     lap_coeff=Mlap*ucoeff;
     lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
@@ -219,7 +228,7 @@ for i = 1:nsteps
     %% RK step 2
     k=2;
 
-    adv_coeff=Pef/2*(Mvor*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=Pef/2*((Me13-Mvor)*ucoeff)+Mgyro*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     lap_coeff=Mlap*ucoeff;
     lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
@@ -245,7 +254,7 @@ for i = 1:nsteps
     k=3;
     adv_p_coeff=adv_comb_coeff;
     
-    adv_coeff=Pef/2*(Mvor*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=Pef/2*((Me13-Mvor)*ucoeff)+Mgyro*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     lap_coeff=Mlap*ucoeff;
     lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
@@ -272,9 +281,9 @@ end
 
 % oneD= load('smol_pBC_2-2beta_0B_0Vsv_0-25Vc_0DT_2Pef_cospi_cd100_m16_n20_dt0-01_tf100-02GPU.mat','ucoeff');
 ucoeff0=gather(ucoeff)*ones(1,Nx_mesh*Nz_mesh);%ucoeff0(m*n/2+m/2+1,:)=1/16/pi;
-norm_distrx=exp(-x.^2/0.01);
+norm_distrx=exp(-x.^2/epsInit);
 norm_distrx=norm_distrx/(sum(norm_distrx)*dx);
-norm_distrz=exp(-z.^2/0.01);
+norm_distrz=exp(-z.^2/epsInit);
 norm_distrz=norm_distrz/(sum(norm_distrz)*dz);
 
 ucoeff0=ucoeff0.*reshape(norm_distrz*norm_distrx,1,[]);
@@ -328,7 +337,6 @@ ucoeff=gpuArray(complex(ucoeff0));
 for i = 1:nsteps
     %% RK step 1
     k=1;
-    
     dxu_coeff=ucoeff*Rdx;
     dx2u_coeff=ucoeff*Rd2x;
     dzu_coeff=ucoeff*Rdz;
@@ -442,7 +450,6 @@ for i = 1:nsteps
 %         f=gather(ucoeff./cellden_temp);
         cell_den(i/saving_rate3,:)=gather(cellden_temp);
 %         PS_feval(i/saving_rate3)=parfeval(@PS_transformed2D,24,f,CPUPS);
-        save('temp.mat','x','z','cell_den');
     end 
 %     if ( mod(i, saving_rate3) == (saving_rate3-2) )
 %         ucoeff_previous(:,:,1)=gather(ucoeff);
@@ -524,13 +531,13 @@ U_profile=gather(U_profile);
 W_profile=gather(W_profile);
 Kp=gather(Kp);
 % ucoeff=gather(ucoeff);
-ex_file_name=['smol_pBC_2D_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_Nx' num2str(Nx_mesh) 'Nz' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_2D_' num2str(epsInit) 'epsInit_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_Nx' num2str(Nx_mesh) 'Nz' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 ex_file_name=replace(ex_file_name,'.','-');
 
 save([ex_file_name 'GPU.mat'],...
     'n','m','Nx_mesh','Nz_mesh','nsteps','Vc','Pef','beta','diff_const','DT','B','Vsmin','Vsvar',...
     'omg2_profile','e11_profile','e13_profile','e33_profile','U_profile','W_profile',...
-    'dt','tfinal','settings','Kp','x','dx','z','dz',...
+    'dt','tfinal','settings','Kp','x','dx','z','dz','x_width','z_width','epsInit',...
     'saving_rate2','saving_rate3',...
     't2','t3','Nint','cell_den',...
     'ufull_save','ucoeff','ucoeff0',...
