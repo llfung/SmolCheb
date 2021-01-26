@@ -105,11 +105,11 @@ gamma_alpha1=gpuArray(gamma(1)/alpha(1));
 gamma_alpha2=gpuArray(gamma(2)/alpha(2));
 gamma_alpha3=gpuArray(gamma(3)/alpha(3));
 rho_alpha2=gpuArray(rho(2)/alpha(2));
-rho_alpha3=gpuArray(rho(2)/alpha(2));
+rho_alpha3=gpuArray(rho(3)/alpha(3));
 
 %% Loop!
-epsilon=5e-5;
-N_check=1000;
+epsilon=5e-10;
+N_check=25;
 for ii=1:100
 for i=1:(N_check-1)
     %k1
@@ -232,7 +232,7 @@ end
     %TODO: better calculation of norm
         errMp1=gather(max(abs(Mint*(Mp1*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
         errMp3=gather(max(abs(Mint*(Mp3*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
-        if max(errMp1,errMp3)<epsilon
+        if max(errMp1,errMp3)<epsilon || isnan(errMp1) 
             break;
         end
         
