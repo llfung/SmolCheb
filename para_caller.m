@@ -5,6 +5,7 @@
 addpath(genpath('core'))
 addpath(genpath('core/x_FD'))
 addpath(genpath('core/p_DFS'))
+addpath(genpath('core/PS_RT'))
 % Parallelisation
 % For CX1
     % pc=parcluster('local');

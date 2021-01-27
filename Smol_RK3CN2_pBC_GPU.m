@@ -42,6 +42,7 @@ K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 [settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
 Mint_CPU=settings.Mint;
 Mint=gpuArray(Mint_CPU);
+settings.Mint=gpuArray(Mint_CPU);
 MintSq=gpuArray(settings.MintSq);
 
 Kp=settings.Kp;
