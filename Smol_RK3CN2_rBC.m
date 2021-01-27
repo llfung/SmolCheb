@@ -9,8 +9,16 @@
 %% Setting up
 %Saving to settings struct
 settings.beta=beta;
+settings.B=B;
+settings.Vc=Vc;
 settings.n=n;
 settings.m=m;
+settings.diff_const=diff_const;
+settings.dt=dt;
+settings.d_spatial=dx;
+settings.N_mesh=N_mesh;
+settings.Kp=Kp;
+
 settings.omg1=G(2,3)-G(3,2);
 settings.omg2=G(3,1)-G(1,3);
 settings.omg3=G(1,2)-G(2,1);
@@ -31,41 +39,14 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-% Surface Integrals
-arr=[-n/2:n/2-1];
-fac=2./(1-arr.^2);
-if mod(n/2,2)
-    fac(1:2:end)=0;
-    fac(n/2)=0;
-    fac(n/2+2)=0;
-else
-    fac(2:2:end)=0;
-end
-Mint=kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]);
-MintSq=Mint*Mint';
-settings.Mint=Mint;
-settings.MintSq=MintSq;
+[settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
 
-settings.Kp=Kp/settings.MintSq/diff_const/dt;
+Mint=settings.Mint;
+MintSq=settings.MintSq;
+
 Kp=settings.Kp;
 
-% Advection
-% Madv=adv_mat(settings);
-Mvor=adv_vor_mat(settings)+B*adv_strain_mat(settings);
-Mgyro=settings.beta*adv_gyro_mat(settings);
-
-%Laplacian
-Mlap=lap_mat(settings);
 helm=helmholtz_gen( n, m);
-
-%Dx (defined Rdx and Rd2x in para_caller)
-
-%p1
-Mp1 = kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
-%p3
-Mp3 = kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)); %e3
-%p1p3
-Mp1p3 = kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
 
 %Swimming and sedimentation   
 MSwim=Vc*Mp1-Vsvar*Mp1p3;

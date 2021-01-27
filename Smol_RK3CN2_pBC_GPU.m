@@ -9,8 +9,16 @@
 %% Setting up
 %Saving to settings struct
 settings.beta=beta;
+settings.B=B;
+settings.Vc=Vc;
 settings.n=n;
 settings.m=m;
+settings.diff_const=diff_const;
+settings.dt=dt;
+settings.d_spatial=dx;
+settings.N_mesh=N_mesh;
+settings.Kp=Kp;
+
 settings.omg1=G(2,3)-G(3,2);
 settings.omg2=G(3,1)-G(1,3);
 settings.omg3=G(1,2)-G(2,1);
@@ -31,24 +39,16 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-% Surface Integrals
-arr=[-n/2:n/2-1];
-fac=2./(1-arr.^2);
-if mod(n/2,2)
-    fac(1:2:end)=0;
-    fac(n/2)=0;
-    fac(n/2+2)=0;
-else
-    fac(2:2:end)=0;
-end
-Mint_CPU=kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]);
+[settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
+Mint_CPU=settings.Mint;
 Mint=gpuArray(Mint_CPU);
-MintSq=Mint*Mint';
-settings.Mint=Mint;
-settings.MintSq=MintSq;
+MintSq=gpuArray(settings.MintSq);
 
-settings.Kp=Kp/MintSq/diff_const/dt; 
 Kp=settings.Kp;
+
+% GPU stuff
+S_profile=gpuArray(S_profile);
+Kp=gpuArray(Kp);
 
 % GPU stuff
 S_profile=gpuArray(S_profile);
@@ -67,34 +67,30 @@ rho_alpha2=gpuArray(rho(2)/alpha(2)/diff_const);
 rho_alpha3=gpuArray(rho(3)/alpha(3)/diff_const);
 
 % Advection
-% Madv=adv_mat(settings);
 % Mvor=gpuArray(complex(adv_vor_mat(settings)));
 % Mgyro=gpuArray(complex(settings.beta*adv_gyro_mat(settings)));
 %For strange behaviour in MATLAB ver < R2020
-Mvor=gpuArray(sparse(complex(full(adv_vor_mat(settings)+B*adv_strain_mat(settings)))));
-Mgyro=gpuArray(sparse(complex(full(settings.beta*adv_gyro_mat(settings)))));
+Mvor=gpuArray(sparse(complex(full(Mvor))));
+Mgyro=gpuArray(sparse(complex(full(Mgyro))));
 
 %Laplacian
-Mlap=gpuArray(sparse(complex(full(lap_mat(settings)))));
+Mlap=gpuArray(sparse(complex(Mlap)));
+
 helm=helmholtz_genGPU( n, m);
 helm_inv_k1=helmholtz_precalGPU( -K2/alpha(1),helm);
 helm_inv_k2=helmholtz_precalGPU( -K2/alpha(2),helm);
 helm_inv_k3=helmholtz_precalGPU( -K2/alpha(3),helm);
 
-%Dx
-Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
-Rdx=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rdx);
-Rdx=gpuArray(Rdx/dx);
-Rd2x=spdiags(ones(N_mesh,1)*[1/90 -3/20 3/2 -49/18 3/2 -3/20 1/90],[3:-1:-3],N_mesh,N_mesh);
-Rd2x=spdiags(ones(N_mesh,1)*[1/90 -3/20 3/2 3/2 -3/20 1/90],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rd2x);
-Rd2x=gpuArray(Rd2x/dx/dx);
+%Dz
+Rdz=gpuArray(Rdz);
+Rd2z=gpuArray(Rd2z);
 
 %p1
-Mp1 = gpuArray(complex(kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))));
+Mp1 = gpuArray(complex(Mp1));
 %p3
-Mp3 = gpuArray(sparse(complex(full(kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m)))))); %e3
+Mp3 = gpuArray(complex(Mp3));
 %p1p3
-Mp1p3 =  gpuArray(sparse(complex(full(kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m))))));
+Mp1p3 =  gpuArray(complex(Mp1p3));
 
 %Swimming and sedimentation   
 MSwim=Vc*Mp1-Vsvar*Mp1p3;
