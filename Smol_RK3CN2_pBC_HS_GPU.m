@@ -41,7 +41,8 @@ if mod(n/2,2)
 else
     fac(2:2:end)=0;
 end
-Mint=gpuArray(kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]));
+Mint_CPU=kron(fac,[zeros(1,m/2) 1 zeros(1,m/2-1)]);
+Mint=gpuArray(Mint_CPU);
 MintSq=Mint*Mint';
 settings.Mint=Mint;
 settings.MintSq=MintSq;
@@ -105,7 +106,7 @@ cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
 ucoeff=gpuArray(complex(ucoeff0));
 adv_p_coeff     =gpuArray(complex(zeros(n*m,N_mesh)));
 adv_comb_coeff  =gpuArray(complex(zeros(n*m,N_mesh)));
-ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
+ucoeff_previous2=complex(NaN(n*m,N_mesh,3));
 
     cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc,2)*dz;
@@ -223,10 +224,10 @@ for i = 1:nsteps
     end
     if ( mod(i, saving_rate2) == 2 )&& i~=2 
         ucoeff_CPU=gather(ucoeff);
-        fdt_full_save=((-ucoeff_CPU./(real(Mint*ucoeff_CPU*2*pi))...
-            + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
-            +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
-            -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
+        fdt_full_save=((-ucoeff_CPU./(real(Mint_CPU*ucoeff_CPU*2*pi))...
+            + ucoeff_previous2(:,:,1)./(real(Mint_CPU*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
+            +(ucoeff_previous2(:,:,3)./(real(Mint_CPU*ucoeff_previous2(:,:,3)*2*pi))...
+            -ucoeff_previous2(:,:,2)./(real(Mint_CPU*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
         udt_full_save=((-ucoeff_CPU...
             + ucoeff_previous2(:,:,1))/12 ...
             +(ucoeff_previous2(:,:,3)...

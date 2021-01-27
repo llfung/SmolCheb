@@ -101,7 +101,7 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=MSwim*dzu_coeff;
+        swim_coeff=MSwim*dzu_coeff(:,j);
         
         DT_coeff=DT*dz2u_coeff(:,j);
         
@@ -125,7 +125,7 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=MSwim*dzu_coeff;
+        swim_coeff=MSwim*dzu_coeff(:,j);
         
         DT_coeff=DT*dz2u_coeff(:,j);
         
@@ -150,7 +150,7 @@ for i = 1:nsteps
         lap_coeff=Mlap*ucoeff(:,j);
         lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
         
-        swim_coeff=MSwim*dzu_coeff;
+        swim_coeff=MSwim*dzu_coeff(:,j);
         
         DT_coeff=DT*dz2u_coeff(:,j);
         

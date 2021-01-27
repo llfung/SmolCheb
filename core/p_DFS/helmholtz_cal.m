@@ -4,7 +4,7 @@ F=transpose(reshape(Fcol,helm.n,helm.m));
 int_const = helm.en*F(:,helm.k)/K2;
 
 % Multiple rhs by sin(th)^2 and divide by K2:
-F = helm.Msin2 * F / K2;
+F = helm.L2 * F / K2;
 
 % Want to solve
 %    X L^T + X DF^T = F
@@ -14,8 +14,8 @@ F = helm.Msin2 * F / K2;
 
 % Solve decoupled matrix equation for X, one row at a time:
 CFS = zeros(helm.m, helm.n);
-L = (helm.Msin2*helm.DF2m + helm.Mcossin*helm.DF1m)/K2 + helm.Msin2;
-scl = diag(helm.DF2n)/K2;
+L = (1/K2)*(helm.L1) + helm.L2;
+scl = (helm.DF2ndiag)/K2;
 for i = [floor(helm.n/2):-1:1 floor(helm.n/2)+2:helm.n]
     CFS(:,i) = (L + scl(i)*helm.Im) \ F(:,i);
 end
