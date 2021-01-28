@@ -33,13 +33,13 @@ B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, dire
 dt = 0.01;                  % Time step
 tfinal = 1+dt*2;           % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
-m = 20;                     % Spherical discretization - phi (even)
-n = 32;                     % Spherical discretization - theta (even)
+m = 16;                     % Spherical discretization - phi (even)
+n = 20;                     % Spherical discretization - theta (even)
 N_mesh=128;                 % Spatial discretization - x/z
 channel_width=2.;           % Rotational Diffusion constant (keep it at 2, for dimensional runs only)
 
 % Run settings
-saving_rate1=2000;
+saving_rate1=10;
 saving_rate2=50;
 saving_rate3=25;
 
@@ -50,10 +50,10 @@ Kp=0.01;
 epsInit=0.;
 
 %% Preliminary Meshing
-% dx=channel_width/(N_mesh);
-% x=-(channel_width/2):dx:(channel_width/2)-dx;
-dz=channel_width/(N_mesh);
-z=-(channel_width/2):dz:(channel_width/2)-dz;
+dx=channel_width/(N_mesh);
+x=-(channel_width/2):dx:(channel_width/2)-dx;
+% dz=channel_width/(N_mesh);
+% z=-(channel_width/2):dz:(channel_width/2)-dz;
 
 % cheb=chebyshev(N_mesh,2,bc_type.none,tran_type.none);
 % x=cheb.col_pt;Rdx=(cheb.D(1))';Rd2x=(cheb.D(2))';
@@ -62,23 +62,23 @@ z=-(channel_width/2):dz:(channel_width/2)-dz;
 
 %% Flow Config
 % Vertical Shear (VS)
-% G= [0 0 1; ...
-%     0 0 0; ...
-%     0 0 0];
-% Horizontal Shear (HS)
-G= [0 0 0; ...
+G= [0 0 1; ...
     0 0 0; ...
-    1 0 0];
+    0 0 0];
+% Horizontal Shear (HS)
+% G= [0 0 0; ...
+%     0 0 0; ...
+%     1 0 0];
 
 % Shear Profile
 % Vertical Shear (VS)
     % W_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
-%     S_profile=pi*sin(pi*x)*Pef/2;     % .5*dW(x)/dx=pi*sin(pi x)/2
-%     S_profile(1)=0;
+    S_profile=pi*sin(pi*x)*Pef/2;     % .5*dW(x)/dx=pi*sin(pi x)/2
+    S_profile(1)=0;
 % Horizontal Shear (HS)
 %     % U_profile=(cos(pi*z)+1)*Pef;     % U(z)=cos(pi x)+1
-    S_profile=-pi*sin(pi*z)*Pef/2;     % .5*dU(z)/dz=-pi*sin(pi x)/2
-    S_profile(1)=0;
+%     S_profile=-pi*sin(pi*z)*Pef/2;     % .5*dU(z)/dz=-pi*sin(pi x)/2
+%     S_profile(1)=0;
 % Others
 % S_profile=x*Pef;                    % W(x)=-(1-x^2)
 % S_profile=Pef/2*ones(size(x));      % W(x)=x
@@ -93,9 +93,9 @@ ucoeff0(m*n/2+m/2+1,:)=int_const/4/pi/channel_width;
 
 %% Call Run Script
 % Smol_RK3CN2_pBC;
-% Smol_RK3CN2_pBC_GPU;
+Smol_RK3CN2_pBC_GPU;
 % Smol_RK3CN2_pBC_HS;
-Smol_RK3CN2_pBC_HS_GPU;
+% Smol_RK3CN2_pBC_HS_GPU;
 % Smol_RK3CN2_rBC;
 % Smol_RK3CN2_rBC_HS;
 
@@ -104,15 +104,22 @@ t1=dt*saving_rate1:dt*saving_rate1:tfinal;
 t2=dt*saving_rate2:dt*saving_rate2:tfinal;
 t3=dt*saving_rate3:dt*saving_rate3:tfinal;
 
-% Nint=sum(cell_den,2)*dx;
-Nint=sum(cell_den,2)*dz;
+Nint=sum(cell_den,2)*dx;
+% Nint=sum(cell_den,2)*dz;
 
+%% Gathering Data
+g=PS.g;
+Transformed=PS.export_struct();
+% [ex,ez,ex_g,ez_g,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTxz,DDTzz]=PS.export();
+% [ex,ez,ex_g,ez_g,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTxx,DDTzx,Vux,Vuz]=PS.export();
+
+settings.Mint=gather(settings.Mint);
 S_profile=gather(S_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
 
-% ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
-ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+% ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 % ex_file_name=['smol_rBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 % ex_file_name=['smol_rBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 
@@ -121,11 +128,12 @@ save('Summary.mat',...
     'diff_const','DT','beta','B',...'AR',...
     'dt','tfinal','nsteps','m','n','N_mesh','channel_width',...
     'int_const','Kp','epsInit',...
-    'z','dz',...'x','dx',...
+    'x','dx',...'z','dz',...
     'S_profile','G','ucoeff0',...
     't1','t2','t3',...
     'settings','ucoeff','cell_den','Nint',...
     'ex_file_name',...
+    'g','Transformed',...
     '-v7.3');
 
 

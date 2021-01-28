@@ -18,6 +18,7 @@ settings.dt=dt;
 settings.d_spatial=dx;
 settings.N_mesh=N_mesh;
 settings.Kp=Kp;
+settings.nsteps=nsteps;
 
 settings.omg1=G(2,3)-G(3,2);
 settings.omg2=G(3,1)-G(1,3);
@@ -46,6 +47,9 @@ MintSq=settings.MintSq;
 
 Kp=settings.Kp;
 
+mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
+    'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x);
+
 helm=helmholtz_gen( n, m);
 
 %Swimming and sedimentation   
@@ -53,6 +57,8 @@ MSwim=Vc*Mp1-Vsvar*Mp1p3;
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
+
+PS=PS_RunTime('x','inv',mats,settings,saving_rate1,saving_rate2);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=ucoeff0;
@@ -143,30 +149,31 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing    
     % Saving full Psi and it time derivative
-    if ( mod(i, saving_rate2) == 0 )
-        ufull_save=ucoeff;
-        t=i*dt;
-    end
-    if ( mod(i, saving_rate2) == 2 )&& i~=2 
-        fdt_full_save=((-ucoeff./(real(Mint*ucoeff*2*pi))...
-            + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
-            +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
-            -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
-        udt_full_save=((-ucoeff...
-            + ucoeff_previous2(:,:,1))/12 ...
-            +(ucoeff_previous2(:,:,3)...
-            -ucoeff_previous2(:,:,2))*(2/3))/dt;
-        save(['t' num2str(t) '.mat'],'t','ufull_save','fdt_full_save','udt_full_save');
-    end
-    if ( mod(i, saving_rate2) == 1 )&& i~=1 
-        ucoeff_previous2(:,:,3)=ucoeff;
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-1 )
-        ucoeff_previous2(:,:,2)=ucoeff;
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-2 )
-        ucoeff_previous2(:,:,1)=ucoeff;
-    end
+    PS=PS.RunTimeCall(ucoeff,i);
+%     if ( mod(i, saving_rate2) == 0 )
+%         ufull_save=ucoeff;
+%         t=i*dt;
+%     end
+%     if ( mod(i, saving_rate2) == 2 )&& i~=2 
+%         fdt_full_save=((-ucoeff./(real(Mint*ucoeff*2*pi))...
+%             + ucoeff_previous2(:,:,1)./(real(Mint*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
+%             +(ucoeff_previous2(:,:,3)./(real(Mint*ucoeff_previous2(:,:,3)*2*pi))...
+%             -ucoeff_previous2(:,:,2)./(real(Mint*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
+%         udt_full_save=((-ucoeff...
+%             + ucoeff_previous2(:,:,1))/12 ...
+%             +(ucoeff_previous2(:,:,3)...
+%             -ucoeff_previous2(:,:,2))*(2/3))/dt;
+%         save(['t' num2str(t) '.mat'],'t','ufull_save','fdt_full_save','udt_full_save');
+%     end
+%     if ( mod(i, saving_rate2) == 1 )&& i~=1 
+%         ucoeff_previous2(:,:,3)=ucoeff;
+%     end
+%     if ( mod(i, saving_rate2) == saving_rate2-1 )
+%         ucoeff_previous2(:,:,2)=ucoeff;
+%     end
+%     if ( mod(i, saving_rate2) == saving_rate2-2 )
+%         ucoeff_previous2(:,:,1)=ucoeff;
+%     end
     
     % Saving Cell Density
     if ( mod(i, saving_rate3) == 0 )

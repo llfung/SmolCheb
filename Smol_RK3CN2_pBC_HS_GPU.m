@@ -18,6 +18,7 @@ settings.dt=dt;
 settings.d_spatial=dz;
 settings.N_mesh=N_mesh;
 settings.Kp=Kp;
+settings.nsteps=nsteps;
 
 settings.omg1=G(2,3)-G(3,2);
 settings.omg2=G(3,1)-G(1,3);
@@ -40,9 +41,12 @@ K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
 [settings,Mvor,Mgyro,Mlap,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
-Mint_CPU=settings.Mint;
-Mint=gpuArray(Mint_CPU);
-settings.Mint=gpuArray(Mint_CPU);
+
+% mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
+%     'Mp1',Mp1,'Mp3',Mp3,'Rdz',Rdz,'Rd2z',Rd2z); settings_CPU=settings; % If CPU PS is used.
+
+Mint=gpuArray(settings.Mint);
+settings.Mint=Mint;
 MintSq=gpuArray(settings.MintSq);
 
 Kp=settings.Kp;
@@ -83,17 +87,23 @@ Rdz=gpuArray(Rdz);
 Rd2z=gpuArray(Rd2z);
 
 %p1
-Mp1 = gpuArray(complex(Mp1));
+Mp1 = gpuArray(sparse(complex(full(Mp1))));
 %p3
-Mp3 = gpuArray(complex(Mp3));
+Mp3 = gpuArray(sparse(complex(full(Mp3))));
 %p3p3
-Mp3sq = gpuArray(complex(Mp3sq));
+Mp3sq = gpuArray(sparse(complex(full(Mp3sq))));
 
 %Swimming and sedimentation
 MSwim=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-Vsvar*Mp3sq;
 
+mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
+    'Mp1',Mp1,'Mp3',Mp3,'Rdz',Rdz,'Rd2z',Rd2z);  % If GPU PS is used.
+
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
+
+% PS=PS_RunTime('z','inv',mats,settings_CPU,saving_rate1,saving_rate2);
+PS=PS_RunTime('z','invGPU_w_fdt',mats,settings,saving_rate1,saving_rate2);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
@@ -211,31 +221,7 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing    
     % Saving full Psi and it time derivative
-    if ( mod(i, saving_rate2) == 0 )
-        ufull_save=gather(ucoeff);
-        t=i*dt;
-    end
-    if ( mod(i, saving_rate2) == 2 )&& i~=2 
-        ucoeff_CPU=gather(ucoeff);
-        fdt_full_save=((-ucoeff_CPU./(real(Mint_CPU*ucoeff_CPU*2*pi))...
-            + ucoeff_previous2(:,:,1)./(real(Mint_CPU*ucoeff_previous2(:,:,1)*2*pi)))/12 ...
-            +(ucoeff_previous2(:,:,3)./(real(Mint_CPU*ucoeff_previous2(:,:,3)*2*pi))...
-            -ucoeff_previous2(:,:,2)./(real(Mint_CPU*ucoeff_previous2(:,:,2)*2*pi)))*(2/3))/dt;
-        udt_full_save=((-ucoeff_CPU...
-            + ucoeff_previous2(:,:,1))/12 ...
-            +(ucoeff_previous2(:,:,3)...
-            -ucoeff_previous2(:,:,2))*(2/3))/dt;
-        save(['t' num2str(t) '.mat'],'t','ufull_save','fdt_full_save','udt_full_save');
-    end
-    if ( mod(i, saving_rate2) == 1 )&& i~=1 
-        ucoeff_previous2(:,:,3)=gather(ucoeff);
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-1 )
-        ucoeff_previous2(:,:,2)=gather(ucoeff);
-    end
-    if ( mod(i, saving_rate2) == saving_rate2-2 )
-        ucoeff_previous2(:,:,1)=gather(ucoeff);
-    end
+    PS=PS.RunTimeCall(ucoeff,i);
     
     % Saving Cell Density
     if ( mod(i, saving_rate3) == 0 )
