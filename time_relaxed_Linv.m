@@ -1,76 +1,17 @@
-% On-the-go-Post-Processing for transformed variables
-function  [ex_avg,ez_avg,Dxx_temp,Dzx_temp,Dxz_temp,Dzz_temp,Vix_temp,Viz_temp,...
-    VDTx_temp,VDTz_temp,DDTxx_temp,DDTzx_temp]=PS_transformedGPU(f,CPUPS,helm)
-        d2xf=f*CPUPS.Rd2x;
-        dxf=f*CPUPS.Rdx;
-%         d2zf=f*CPUPS.Rd2z;
-%         dzf=f*CPUPS.Rdz;
-        ex_avg=real(CPUPS.Mint*CPUPS.Mp1*f*(2*pi));
-        ez_avg=real(CPUPS.Mint*CPUPS.Mp3*f*(2*pi));
-%         exz_avg=real(CPUPS.Mint*CPUPS.Mp1p3*f*(2*pi));
-%         ezz_avg=real(CPUPS.Mint*CPUPS.Mp3sq*f*(2*pi));
-        
-        bx_RHS=CPUPS.Mp1*f-ex_avg.*f;
-        bz_RHS=CPUPS.Mp3*f-ez_avg.*f;
-%         inhomo_RHS=CPUPS.Mp1*(dxf)+CPUPS.Mp3*(dzf)-(ex_avg*CPUPS.Rdx+ez_avg*CPUPS.Rdz).*f;
-        inhomo_RHS=CPUPS.Mp1*(dxf)-(ex_avg*CPUPS.Rdx).*f;
-%         b_swimvar_x_RHS=CPUPS.Mp1p3*f-exz_avg.*f;
-%         b_swimvar_z_RHS=CPUPS.Mp3sq*f-ezz_avg.*f;
-%         f_swimvari_RHS=CPUPS.Mp1p3*dxf+CPUPS.Mp3sq*dzf-(exz_avg*CPUPS.Rdx+ezz_avg*CPUPS.Rdz).*f;
-        
-                 bx = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-                     bx_RHS,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);
-                 bz = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-                     bz_RHS,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);
-            b_DT_p1 = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-                     dxf,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);
-%             b_DT_p3 = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-%                          dzf,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);                   
-           f_inhomo = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-                     inhomo_RHS,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);
-               f_DT = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-                     d2xf,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);
-%                 f_a = time_relaxed_Linv_f(CPUPS.Mvor,CPUPS.Mgyro,CPUPS.Mlap,CPUPS.S_profile,...
-%                          CPUPS.U_profile(j).*dxf+CPUPS.W_profile.*dzf,CPUPS.Mint,CPUPS.MintSq,CPUPS.Mp1,CPUPS.Mp3,CPUPS.Nx_mesh,helm);
-
-
-             Dxx_temp=CPUPS.Mint*(CPUPS.Mp1*bx)*2*pi;
-             Dxz_temp=CPUPS.Mint*(CPUPS.Mp1*bz)*2*pi;
-             Dzx_temp=CPUPS.Mint*(CPUPS.Mp3*bx)*2*pi;
-             Dzz_temp=CPUPS.Mint*(CPUPS.Mp3*bz)*2*pi;
-             Vix_temp=CPUPS.Mint*(CPUPS.Mp1*f_inhomo)*2*pi;
-             Viz_temp=CPUPS.Mint*(CPUPS.Mp3*f_inhomo)*2*pi;            
-            VDTx_temp=CPUPS.Mint*(CPUPS.Mp1*f_DT)*2*pi;
-            VDTz_temp=CPUPS.Mint*(CPUPS.Mp3*f_DT)*2*pi;
-%              Vax_temp=CPUPS.Mint*(CPUPS.Mp1*f_a)*2*pi;
-%              Vaz_temp=CPUPS.Mint*(CPUPS.Mp3*f_a)*2*pi;
-             
-%             Vswimminx_temp=CPUPS.Mint*(CPUPS.Mp1*f_swimmin)*2*pi;
-%             Vswimminz_temp=CPUPS.Mint*(CPUPS.Mp3*f_swimmin)*2*pi;
-%             Dswimxx_temp=CPUPS.Mint*(CPUPS.Mp1*b_swimvar_x)*2*pi;
-%             Dswimxz_temp=CPUPS.Mint*(CPUPS.Mp1*b_swimvar_z)*2*pi;
-%             Dswimzx_temp=CPUPS.Mint*(CPUPS.Mp3*b_swimvar_x)*2*pi;
-%             Dswimzz_temp=CPUPS.Mint*(CPUPS.Mp3*b_swimvar_z)*2*pi;
-%             Vswimvarx_temp=CPUPS.Mint*(CPUPS.Mp1*f_swimvar_i)*2*pi;
-%             Vswimvarz_temp=CPUPS.Mint*(CPUPS.Mp3*f_swimvar_i)*2*pi;
-            
-            DDTxx_temp=CPUPS.Mint*(CPUPS.Mp1*b_DT_p1)*2*pi;
-            DDTzx_temp=CPUPS.Mint*(CPUPS.Mp3*b_DT_p1)*2*pi;
-%             DDTxz_temp=CPUPS.Mint*(CPUPS.Mp1*b_DT_p3)*2*pi;
-%             DDTzz_temp=CPUPS.Mint*(CPUPS.Mp3*b_DT_p3)*2*pi;
-            
-        
-
-end
-
-function ucoeff=time_relaxed_Linv_f(Mvor,Mgyro,Mlap,S,forcing,Mint,MintSq,Mp1,Mp3,N_mesh,helm)
+function ucoeff=time_relaxed_Linv(Mvor,Mgyro,Mlap,S,forcing,Mint,MintSq,Mp1,Mp3,helm)
 %% Initialisation
-% ucoeff=ucoeff0;
 ucoeff=zeros(size(forcing));
-% ucoeffp=zeros(size(forcing));
+
+N_mesh=numel(S);
 
 %% Parameters
-forcing=gpuArray(forcing-Mint'*(Mint*forcing)/MintSq);
+if any(forcing,'all')
+    forcing=gpuArray(forcing-Mint'*(Mint*forcing)/MintSq);
+    init_const=0;
+else
+    init_const=1/2/pi;
+    ucoeff(helm.m*helm.n/2+helm.m/2+1,:)=1/4/pi;
+end
 
 %% RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
@@ -89,11 +30,15 @@ MintSq=gpuArray(MintSq);
 ucoeff=gpuArray(ucoeff);
 enG=gpuArray(helm.en);
 L2G=gpuArray(complex(full(helm.L2)));
-helm_inv_k1=gpuArray(helm.helm_inv_k1);
-helm_inv_k2=gpuArray(helm.helm_inv_k2);
-helm_inv_k3=gpuArray(helm.helm_inv_k3);
 
-Kp=gpuArray(0.01/helm.dt)/MintSq;
+helm_inv_k1=helmholtz_precalGPU( -K2/alpha(1),helm);
+helm_inv_k2=helmholtz_precalGPU( -K2/alpha(2),helm);
+helm_inv_k3=helmholtz_precalGPU( -K2/alpha(3),helm);
+helm_inv_k1=gpuArray(helm_inv_k1);
+helm_inv_k2=gpuArray(helm_inv_k2);
+helm_inv_k3=gpuArray(helm_inv_k3);
+
+Kp=gpuArray(0.001)/MintSq;
 mKp_alpha1=gpuArray(-(Kp/alpha(1)));
 mKp_alpha2=gpuArray(-(Kp/alpha(2)));
 mKp_alpha3=gpuArray(-(Kp/alpha(3)));
@@ -121,7 +66,7 @@ for i=1:(N_check-1)
 
     adv_p_coeff=adv_coeff-forcing;
     rhs_coeff = mK2_alpha1*ucoeff-lap_coeff+gamma_alpha1*adv_p_coeff...
-        +mKp_alpha1*(-(Mint*ucoeff)).*(Mint'.*ucoeff);
+        +mKp_alpha1*(init_const-(Mint*ucoeff)).*(Mint'.*ucoeff);
     
     F=permute(reshape(rhs_coeff,helm.n,helm.m,N_mesh),[2 1 3]);
     int_constj = pagefun(@mtimes,malpha1_K2*enG,F(:,helm.k,:));
@@ -139,7 +84,7 @@ for i=1:(N_check-1)
 
     adv_comb_coeff=adv_coeff-forcing;
     rhs_coeff = mK2_alpha2*ucoeff-lap_coeff+gamma_alpha2*adv_comb_coeff+rho_alpha2*adv_p_coeff...
-        +mKp_alpha2*(-(Mint*ucoeff)).*(Mint'.*ucoeff);
+        +mKp_alpha2*(init_const-(Mint*ucoeff)).*(Mint'.*ucoeff);
     
     F=permute(reshape(rhs_coeff,helm.n,helm.m,N_mesh),[2 1 3]);
     int_constj = pagefun(@mtimes,malpha2_K2*enG,F(:,helm.k,:));
@@ -160,7 +105,7 @@ for i=1:(N_check-1)
 
     adv_comb_coeff=adv_coeff-forcing;
     rhs_coeff = mK2_alpha3*ucoeff-lap_coeff+gamma_alpha3*adv_comb_coeff+rho_alpha3*adv_p_coeff...
-        +mKp_alpha3*(-(Mint*ucoeff)).*(Mint'.*ucoeff);
+        +mKp_alpha3*(init_const-(Mint*ucoeff)).*(Mint'.*ucoeff);
 
     F=permute(reshape(rhs_coeff,helm.n,helm.m,N_mesh),[2 1 3]);
     int_constj = pagefun(@mtimes,malpha3_K2*enG,F(:,helm.k,:));
@@ -180,7 +125,7 @@ end
 
     adv_p_coeff=adv_coeff-forcing;
     rhs_coeff = mK2_alpha1*ucoeff-lap_coeff+gamma_alpha1*adv_p_coeff...
-        +mKp_alpha1*(-(Mint*ucoeff)).*(Mint'.*ucoeff);
+        +mKp_alpha1*(init_const-(Mint*ucoeff)).*(Mint'.*ucoeff);
     
     F=permute(reshape(rhs_coeff,helm.n,helm.m,N_mesh),[2 1 3]);
     int_constj = pagefun(@mtimes,malpha1_K2*enG,F(:,helm.k,:));
@@ -198,7 +143,7 @@ end
 
     adv_comb_coeff=adv_coeff-forcing;
     rhs_coeff = mK2_alpha2*ucoeff-lap_coeff+gamma_alpha2*adv_comb_coeff+rho_alpha2*adv_p_coeff...
-        +mKp_alpha2*(-(Mint*ucoeff)).*(Mint'.*ucoeff);
+        +mKp_alpha2*(init_const-(Mint*ucoeff)).*(Mint'.*ucoeff);
     
     F=permute(reshape(rhs_coeff,helm.n,helm.m,N_mesh),[2 1 3]);
     int_constj = pagefun(@mtimes,malpha2_K2*enG,F(:,helm.k,:));
@@ -219,7 +164,7 @@ end
 
     adv_comb_coeff=adv_coeff-forcing;
     rhs_coeff = mK2_alpha3*ucoeff-lap_coeff+gamma_alpha3*adv_comb_coeff+rho_alpha3*adv_p_coeff...
-        +mKp_alpha3*(-(Mint*ucoeff)).*(Mint'.*ucoeff);
+        +mKp_alpha3*(init_const-(Mint*ucoeff)).*(Mint'.*ucoeff);
 
     F=permute(reshape(rhs_coeff,helm.n,helm.m,N_mesh),[2 1 3]);
     int_constj = pagefun(@mtimes,malpha3_K2*enG,F(:,helm.k,:));
