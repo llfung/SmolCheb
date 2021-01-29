@@ -71,8 +71,8 @@ classdef PS_RunTime
                 else
                     obj.Linv=gpuArray(Linv);
                 end
-                obj.Transformed.ex_g=Mint*(Mp1*g);
-                obj.Transformed.ez_g=Mint*(Mp3*g);
+                obj.Transformed.ex_g=real(Mint*(Mp1*g))*2*pi;
+                obj.Transformed.ez_g=real(Mint*(Mp3*g))*2*pi;
                 
                 if obj.varDir==1
                     obj.Transformed.DDTxx=NaN(floor(obj.settings.nsteps/obj.saving_rate1),obj.settings.N_mesh);
