@@ -10,7 +10,7 @@ if any(forcing,'all')
     init_const=0;
 else
     init_const=1/2/pi;
-    ucoeff(helm.m*helm.n/2+helm.m/2+1,:)=1/4/pi;
+    ucoeff(helm.n*helm.m/2+helm.n/2+1,:)=1/4/pi; % Note that helm.n=m;helm.n=m;
 end
 
 %% RK3 coeff and constants
@@ -38,7 +38,7 @@ helm_inv_k1=gpuArray(helm_inv_k1);
 helm_inv_k2=gpuArray(helm_inv_k2);
 helm_inv_k3=gpuArray(helm_inv_k3);
 
-Kp=gpuArray(0.001)/MintSq;
+Kp=gpuArray(0.0/helm.dt)/MintSq;
 mKp_alpha1=gpuArray(-(Kp/alpha(1)));
 mKp_alpha2=gpuArray(-(Kp/alpha(2)));
 mKp_alpha3=gpuArray(-(Kp/alpha(3)));
@@ -53,8 +53,8 @@ rho_alpha2=gpuArray(rho(2)/alpha(2));
 rho_alpha3=gpuArray(rho(3)/alpha(3));
 
 %% Loop!
-epsilon=5e-10;
-N_check=25;
+epsilon=1e-7;
+N_check=100;
 for ii=1:100
 for i=1:(N_check-1)
     %k1
@@ -175,15 +175,19 @@ end
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);  
         
     %TODO: better calculation of norm
+    err=gather(max(sqrt(sum(abs(ucoeff-ucoeffp).^2,2))));
+    if err<epsilon || isnan(err) 
+        break;
+    end
         errMp1=gather(max(abs(Mint*(Mp1*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
         errMp3=gather(max(abs(Mint*(Mp3*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
-        if max(errMp1,errMp3)<epsilon || isnan(errMp1) 
-            break;
-        end
+%         if max(errMp1,errMp3)<epsilon || isnan(errMp1) 
+%             break;
+%         end
         
-
+% disp([num2str(ii*N_check) '    ' num2str(err) '  ' num2str(errMp1) '   ' num2str(errMp3) '   ' num2str(gather(max(abs(Mint*ucoeff)))*2*pi)]);
 end
 
-disp([num2str(ii*N_check) '    ' num2str(errMp1) '  ' num2str(errMp3) '    ' num2str(gather(max(abs(Mint*ucoeff)))*2*pi)]);
+disp([num2str(ii*N_check) '    ' num2str(err) '     ' num2str(gather(max(abs(Mint*ucoeff)))*2*pi)]);
 ucoeff=gather(ucoeff);
 end

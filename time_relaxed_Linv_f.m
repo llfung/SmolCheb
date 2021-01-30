@@ -6,8 +6,18 @@ helm=helmholtz_genGPU( settings.n, settings.m);
 helm.dt=settings.dt;
 [settings,Mvor,Mgyro,Mlap,Rd,Rd2,Mp1,Mp3]=all_mat_gen(settings);
 
-Mint=settings.Mint;
-MintSq=settings.MintSq;
+Mint=gpuArray(settings.Mint);
+MintSq=gpuArray(settings.MintSq);
+
+Mvor=gpuArray(Mvor);
+Mgyro=gpuArray(Mgyro);
+Mlap=gpuArray(Mlap);
+Rd=gpuArray(Rd);
+Rd2=gpuArray(Rd2);
+Mp1=gpuArray(Mp1);
+Mp3=gpuArray(Mp3);
+
+f=gpuArray(f);
 
 d2f=f*Rd2;
 df=f*Rd;
@@ -44,17 +54,18 @@ f_DT = time_relaxed_Linv(Mvor,Mgyro,Mlap,S_profile,...
     d2f,Mint,MintSq,Mp1,Mp3,helm);
 % f_u = time_relaxed_Linv(Mvor,Mgyro,Mlap,S_profile,...
 %     U_profile(j).*dxf+W_profile.*dzf,Mint,MintSq,Mp1,Mp3,Nx_mesh,helm);
-
-Dxx=real(Mint*(Mp1*bx)*2*pi);
-Dxz=real(Mint*(Mp1*bz)*2*pi);
-Dzx=real(Mint*(Mp3*bx)*2*pi);
-Dzz=real(Mint*(Mp3*bz)*2*pi);
-Vix=real(Mint*(Mp1*f_inhomo)*2*pi);
-Viz=real(Mint*(Mp3*f_inhomo)*2*pi);
-VDTx=real(Mint*(Mp1*f_DT)*2*pi);
-VDTz=real(Mint*(Mp3*f_DT)*2*pi);
-DDTx=real(Mint*(Mp1*b_DT)*2*pi);
-DDTz=real(Mint*(Mp3*b_DT)*2*pi);
+ex=gather(ex);
+ez=gather(ez);
+Dxx=gather(real(Mint*(Mp1*bx)*2*pi));
+Dxz=gather(real(Mint*(Mp1*bz)*2*pi));
+Dzx=gather(real(Mint*(Mp3*bx)*2*pi));
+Dzz=gather(real(Mint*(Mp3*bz)*2*pi));
+Vix=gather(real(Mint*(Mp1*f_inhomo)*2*pi));
+Viz=gather(real(Mint*(Mp3*f_inhomo)*2*pi));
+VDTx=gather(real(Mint*(Mp1*f_DT)*2*pi));
+VDTz=gather(real(Mint*(Mp3*f_DT)*2*pi));
+DDTx=gather(real(Mint*(Mp1*b_DT)*2*pi));
+DDTz=gather(real(Mint*(Mp3*b_DT)*2*pi));
 % Vux=real(Mint*(Mp1*f_u)*2*pi);
 % Vuz=real(Mint*(Mp3*f_u)*2*pi);
 
@@ -67,11 +78,11 @@ DDTz=real(Mint*(Mp3*b_DT)*2*pi);
 % Vswimvarx=real(Mint*(Mp1*f_swimvar_i)*2*pi);
 % Vswimvarz=real(Mint*(Mp3*f_swimvar_i)*2*pi);
 
-if nargin>3
+if nargin>4
     f_delt = time_relaxed_Linv(Mvor,Mgyro,Mlap,S_profile,...
-        fdt,Mint,MintSq,Mp1,Mp3,helm);
-    Vdeltx = real(Mint*(Mp1*f_delt))*2*pi;
-    Vdeltz = real(Mint*(Mp3*f_delt))*2*pi;
+        gpuArray(fdt),Mint,MintSq,Mp1,Mp3,helm);
+    Vdeltx = gather(real(Mint*(Mp1*f_delt)))*2*pi;
+    Vdeltz = gather(real(Mint*(Mp3*f_delt)))*2*pi;
 end
 end
 
