@@ -1,4 +1,9 @@
+addpath(genpath('core'))
+addpath(genpath('core/x_FD'))
+addpath(genpath('core/p_DFS'))
+addpath(genpath('core/PS_RT'))
 dir='./';
+
 load([dir 'Summary.mat']);
 
 [settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
@@ -6,7 +11,7 @@ helm=helmholtz_genGPU( settings.n, settings.m);
 helm.dt=settings.dt*10;
 
 g_trelax=time_relaxed_Linv(gpuArray(Mvor),gpuArray(Mgyro),gpuArray(Mlap),gpuArray(S_profile),...
-zeros(n*m,N_mesh,'gpuArray'),gpuArray(settings.Mint),gpuArray(settings.MintSq),gpuArray(Mp1),gpuArray(Mp3),helm);
+zeros(n*m,N_mesh,'gpuArray'),gpuArray(settings.Mint),gpuArray(settings.MintSq),helm);
 
 [Trans_trelax.ex_g,Trans_trelax.ez_g,Trans_trelax.Dxx_g,Trans_trelax.Dxz_g,Trans_trelax.Dzx_g,Trans_trelax.Dzz_g,Trans_trelax.Vix_g,Trans_trelax.Viz_g,...
         Trans_trelax.VDTx_g,Trans_trelax.VDTz_g,Trans_trelax.DDTx_g,Trans_trelax.DDTz_g]...
@@ -36,6 +41,7 @@ for i=1:length(t2)
 %     Trans_trelax.DDTzz(i,:)=DDTz;
     Trans_trelax.Vux(i,:)=Vdeltx;
     Trans_trelax.Vuz(i,:)=Vdeltz;
+    disp([num2str(i) '/' num2str(length(t2))]);
 end
 %%
 save([dir 'SummaryPS.mat']);

@@ -1,16 +1,22 @@
-function ucoeff=time_relaxed_Linv(Mvor,Mgyro,Mlap,S,forcing,Mint,MintSq,Mp1,Mp3,helm)
+function ucoeff=time_relaxed_Linv(Mvor,Mgyro,Mlap,S,forcing,Mint,MintSq,helm,ucoeff)
 %% Initialisation
-ucoeff=zeros(size(forcing));
-
 N_mesh=numel(S);
 
-%% Parameters
-if any(forcing,'all')
-    forcing=gpuArray(forcing-Mint'*(Mint*forcing)/MintSq);
-    init_const=0;
+if nargin == 8
+    ucoeff=zeros(size(forcing));
+    if any(forcing,'all')
+        forcing=gpuArray(forcing-Mint'*(Mint*forcing)/MintSq);
+        init_const=0;
+    else
+        init_const=1/2/pi;
+        ucoeff(helm.n*helm.m/2+helm.n/2+1,:)=1/4/pi; % Note that helm.n=m;helm.n=m;
+    end
 else
-    init_const=1/2/pi;
-    ucoeff(helm.n*helm.m/2+helm.n/2+1,:)=1/4/pi; % Note that helm.n=m;helm.n=m;
+    if any(forcing,'all')
+        init_const=0;
+    else
+        init_const=1/2/pi;
+    end
 end
 
 %% RK3 coeff and constants
@@ -54,8 +60,8 @@ rho_alpha3=gpuArray(rho(3)/alpha(3));
 
 %% Loop!
 epsilon=1e-7;
-N_check=100;
-for ii=1:100
+N_check=25;
+for ii=1:400
 for i=1:(N_check-1)
     %k1
     adv_coeff=S.*(Mvor*ucoeff)+Mgyro*ucoeff;
@@ -179,8 +185,8 @@ end
     if err<epsilon || isnan(err) 
         break;
     end
-        errMp1=gather(max(abs(Mint*(Mp1*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
-        errMp3=gather(max(abs(Mint*(Mp3*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
+%         errMp1=gather(max(abs(Mint*(Mp1*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
+%         errMp3=gather(max(abs(Mint*(Mp3*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
 %         if max(errMp1,errMp3)<epsilon || isnan(errMp1) 
 %             break;
 %         end
