@@ -1,10 +1,15 @@
+%% Time marching way to invert Lp operator for Transformed variables
+% Note: it is found that time marching does not converge.
+% Likely due to implementation of Mlap and helmholtz algorithm
+% Residue modes at theta 0th, phi +-1st modes, and other phi +-1st modes.
+
 addpath(genpath('core'))
 addpath(genpath('core/x_FD'))
 addpath(genpath('core/p_DFS'))
 addpath(genpath('core/PS_RT'))
 dir='./';
 
-load([dir 'Summary.mat']);
+% load([dir 'Summary.mat']);
 
 [settings,Mvor,Mgyro,Mlap,Mlap_inv,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
 helm=helmholtz_genGPU( settings.n, settings.m);

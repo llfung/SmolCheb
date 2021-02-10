@@ -1,3 +1,9 @@
+%% Time marching way to invert Lp operator
+% Note: it is found that time marching does not converge.
+% Likely due to implementation of Mlap and helmholtz algorithm
+% Residue modes at theta 0th, phi +-1st modes, and other phi +-1st modes.
+% DO NOT USE THIS. USE DIRECT INVERSION WITH Mlap_inv!!!!!!!
+
 function ucoeff=time_relaxed_Linv(Mvor,Mgyro,Mlap,S,forcing,Mint,MintSq,helm,ucoeff)
 %% Initialisation
 N_mesh=numel(S);

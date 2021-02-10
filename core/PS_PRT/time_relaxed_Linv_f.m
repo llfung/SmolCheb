@@ -1,6 +1,11 @@
-% On-the-go-Post-Processing for transformed variables
+%% Time marching way to invert Lp operator for transformed variables
+% Note: it is found that time marching does not converge.
+% Likely due to implementation of Mlap and helmholtz algorithm
+% Residue modes at theta 0th, phi +-1st modes, and other phi +-1st modes.
+% DO NOT USE THIS. USE DIRECT INVERSION WITH Mlap_inv!!!!!!!
 function  [ex,ez,Dxx,Dxz,Dzx,Dzz,Vix,Viz,...
     VDTx,VDTz,DDTx,DDTz,Vdeltx,Vdeltz]=time_relaxed_Linv_f(dir,settings,S_profile,f,fdt)
+%% Initialisation for faster runtime
     persistent bx bz b_DT f_inhomo f_DT f_delt
 if isempty(bx)
     bx=zeros(settings.n*settings.m,settings.N_mesh);
@@ -10,7 +15,7 @@ if isempty(bx)
     f_DT=zeros(settings.n*settings.m,settings.N_mesh);
     f_delt=zeros(settings.n*settings.m,settings.N_mesh);
 end
-    
+%% Initialisation    
 helm=helmholtz_genGPU( settings.n, settings.m);
 helm.dt=settings.dt;
 [settings,Mvor,Mgyro,Mlap,~,Rd,Rd2,Mp1,Mp3]=all_mat_gen(settings);
@@ -27,7 +32,7 @@ Mp1=gpuArray(Mp1);
 Mp3=gpuArray(Mp3);
 
 f=gpuArray(f);
-
+%% Computation
 d2f=f*Rd2;
 df=f*Rd;
 
