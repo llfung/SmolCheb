@@ -40,10 +40,10 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-[settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Mlap,Mlap_inv,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
 
-mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
-    'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x); settings_CPU=settings; % If CPU PS is used.
+% mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap_inv,...
+%     'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x); settings_CPU=settings; % If CPU PS is used.
 
 Mint=gpuArray(settings.Mint);
 settings.Mint=Mint;
@@ -76,6 +76,7 @@ Mgyro=gpuArray(sparse(complex(full(Mgyro))));
 
 %Laplacian
 Mlap=gpuArray(sparse(complex(Mlap)));
+Mlap_inv=gpuArray(sparse(complex(Mlap_inv)));
 
 helm=helmholtz_genGPU( n, m);
 helm_inv_k1=helmholtz_precalGPU( -K2/alpha(1),helm);
@@ -96,14 +97,14 @@ Mp1p3 =  gpuArray(complex(Mp1p3));
 %Swimming and sedimentation   
 MSwim=Vc*Mp1-Vsvar*Mp1p3;
 
-% mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
-%     'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x);  % If GPU PS is used.
+mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap_inv,...
+    'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x);  % If GPU PS is used.
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
 
-PS=PS_RunTime('x','inv',mats,settings_CPU,saving_rate1,saving_rate2);
-% PS=PS_RunTime('x','invGPU_w_fdt',mats,settings,saving_rate1,saving_rate2);
+% PS=PS_RunTime('x','inv',mats,settings_CPU,saving_rate1,saving_rate2);
+PS=PS_RunTime('x','invGPU_w_fdt',mats,settings,saving_rate1,saving_rate2);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
