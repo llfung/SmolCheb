@@ -1,4 +1,4 @@
-function [ex_avg,ez_avg,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTx,DDTz]=Linv_f(dir,f,Linv,Rd,Rd2,Mp1,Mp3,settings,zero_row)
+function [ex_avg,ez_avg,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTx,DDTz]=Linv_f(dir,f,Linv,Msin,Rd,Rd2,Mp1,Mp3,settings,zero_row,k)
         N_mesh=settings.N_mesh;
         n=settings.n;
         m=settings.m;
@@ -20,15 +20,24 @@ function [ex_avg,ez_avg,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTx,DDTz]=Linv_f(dir,
           error('Linv_f: unknown direction');
         end
         
-        temp=sum(bsxfun(@times,Linv,reshape([bx_RHS;zero_row],1,n*m+1,N_mesh)),2);
+        bx_RHS=Msin*bx_RHS;bx_RHS(k,:)=zero_row;
+        temp=sum(bsxfun(@times,Linv,reshape(bx_RHS,1,n*m,N_mesh)),2);
         bx=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([bz_RHS;zero_row],1,n*m+1,N_mesh)),2);
+        
+        bz_RHS=Msin*bz_RHS;bz_RHS(k,:)=zero_row;
+        temp=sum(bsxfun(@times,Linv,reshape(bz_RHS,1,n*m,N_mesh)),2);
         bz=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([df;zero_row],1,n*m+1,N_mesh)),2);
+        
+        df=Msin*df;df(k,:)=zero_row;
+        temp=sum(bsxfun(@times,Linv,reshape(df,1,n*m,N_mesh)),2);
         b_DT=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([inhomo_RHS;zero_row],1,n*m+1,N_mesh)),2);
+        
+        inhomo_RHS=Msin*inhomo_RHS;inhomo_RHS(k,:)=zero_row;
+        temp=sum(bsxfun(@times,Linv,reshape(inhomo_RHS,1,n*m,N_mesh)),2);
         f_inhomo=reshape(temp(1:n*m,1,:),n*m,N_mesh);
-        temp=sum(bsxfun(@times,Linv,reshape([d2f;zero_row],1,n*m+1,N_mesh)),2);
+        
+        d2f=Msin*d2f;d2f(k,:)=zero_row;
+        temp=sum(bsxfun(@times,Linv,reshape(d2f,1,n*m,N_mesh)),2);
         f_a=reshape(temp(1:n*m,1,:),n*m,N_mesh);
         
         Dxx=real(Mint*(Mp1*reshape(bx,n*m,N_mesh))*(2*pi));

@@ -1,7 +1,8 @@
-function [Vux,Vuz]=Linv_fdt(fdt,Linv,Mp1,Mp3,settings,zero_row)
-
+function [Vux,Vuz]=Linv_fdt(fdt,Linv,Msin,Mp1,Mp3,settings,zero_row,k)
+    
+    fdt=Msin*fdt;fdt(k,:)=zero_row;
     temp=sum(bsxfun(@times,Linv,...
-        reshape([fdt;zero_row],1,settings.n*settings.m+1,settings.N_mesh)),2);
+        reshape(fdt,1,settings.n*settings.m,settings.N_mesh)),2);
     f_dt=reshape(temp(1:settings.n*settings.m,1,:),...
         settings.n*settings.m,settings.N_mesh);
 

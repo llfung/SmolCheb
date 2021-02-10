@@ -13,7 +13,7 @@ end
     
 helm=helmholtz_genGPU( settings.n, settings.m);
 helm.dt=settings.dt;
-[settings,Mvor,Mgyro,Mlap,Rd,Rd2,Mp1,Mp3]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Mlap,~,Rd,Rd2,Mp1,Mp3]=all_mat_gen(settings);
 
 Mint=gpuArray(settings.Mint);
 MintSq=gpuArray(settings.MintSq);

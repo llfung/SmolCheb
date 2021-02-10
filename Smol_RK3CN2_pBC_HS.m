@@ -40,14 +40,14 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-[settings,Mvor,Mgyro,Mlap,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Mlap,Mlap_inv,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
 
 Mint=settings.Mint;
 MintSq=settings.MintSq;
 
 Kp=settings.Kp;
 
-mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
+mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap_inv,...
     'Mp1',Mp1,'Mp3',Mp3,'Rdz',Rdz,'Rd2z',Rd2z);
 
 helm=helmholtz_gen( n, m);

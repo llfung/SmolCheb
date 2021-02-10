@@ -17,6 +17,7 @@ classdef PS_RunTime
         zero_row
         mats
         Linv
+        Msin
         g
         
         Transformed
@@ -64,12 +65,15 @@ classdef PS_RunTime
             if obj.InvMeth
                 Mint=gather(obj.settings.Mint);
                 Mp1=gather(mats.Mp1);Mp3=gather(mats.Mp3);
-                [g,Linv]=Linv_g(mats.S_profile,mats.Mvor,mats.Mgyro,mats.Mlap,settings.Mint);
+                Msin=kron(spdiags(0.5i*ones(settings.n,1)*[-1,1], [-1 1], settings.n, settings.n),speye(settings.m));
+                [g,Linv]=Linv_g(mats.S_profile,mats.Mvor,mats.Mgyro,mats.Mlap,settings.Mint,Msin,settings.n,settings.m);
                 obj.g=g;
                 if mod(obj.InvMeth,2)
                     obj.Linv=Linv;
+                    obj.Msin=Msin;
                 else
                     obj.Linv=gpuArray(Linv);
+                    obj.Msin=gpuArray(Msin);
                 end
                 obj.Transformed.ex_g=real(Mint*(Mp1*g))*2*pi;
                 obj.Transformed.ez_g=real(Mint*(Mp3*g))*2*pi;
@@ -118,12 +122,12 @@ classdef PS_RunTime
                 end
                 if obj.varDir==1
                     [ex,ez,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTxx,DDTzx]=...
-                        Linv_f('x',f,obj.Linv,obj.mats.Rdx,obj.mats.Rd2x,obj.mats.Mp1,obj.mats.Mp3,obj.settings,obj.zero_row);
+                        Linv_f('x',f,obj.Linv,obj.Msin,obj.mats.Rdx,obj.mats.Rd2x,obj.mats.Mp1,obj.mats.Mp3,obj.settings,obj.zero_row,obj.settings.n*obj.settings.m/2+obj.settings.m/2+1);
                     obj.Transformed.DDTxx(i/obj.saving_rate1,:)=gather(DDTxx);
                     obj.Transformed.DDTzx(i/obj.saving_rate1,:)=gather(DDTzx);
                 else
                     [ex,ez,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTxz,DDTzz]=...
-                        Linv_f('z',f,obj.Linv,obj.mats.Rdz,obj.mats.Rd2z,obj.mats.Mp1,obj.mats.Mp3,obj.settings,obj.zero_row);
+                        Linv_f('z',f,obj.Linv,obj.Msin,obj.mats.Rdz,obj.mats.Rd2z,obj.mats.Mp1,obj.mats.Mp3,obj.settings,obj.zero_row,obj.settings.n*obj.settings.m/2+obj.settings.m/2+1);
                     obj.Transformed.DDTxz(i/obj.saving_rate1,:)=gather(DDTxz);
                     obj.Transformed.DDTzz(i/obj.saving_rate1,:)=gather(DDTzz);
                 end
@@ -148,7 +152,7 @@ classdef PS_RunTime
                     if mod(obj.InvMeth,2)
                         fdt=gather(fdt);
                     end
-                    [Vux,Vuz]=Linv_fdt(fdt,obj.Linv,obj.mats.Mp1,obj.mats.Mp3,obj.settings,obj.zero_row);
+                    [Vux,Vuz]=Linv_fdt(fdt,obj.Linv,obj.Msin,obj.mats.Mp1,obj.mats.Mp3,obj.settings,obj.zero_row,obj.settings.n*obj.settings.m/2+obj.settings.m/2+1);
                     obj.Transformed.Vux((i-2)/obj.saving_rate1,:) =gather(Vux);
                     obj.Transformed.Vuz((i-2)/obj.saving_rate1,:) =gather(Vuz);
                 end

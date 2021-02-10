@@ -59,8 +59,12 @@ rho_alpha2=gpuArray(rho(2)/alpha(2));
 rho_alpha3=gpuArray(rho(3)/alpha(3));
 
 %% Loop!
-epsilon=1e-7;
-N_check=25;
+if init_const == 0
+    epsilon=1e-7;
+else
+    epsilon=1e-12;
+end
+N_check=50;
 for ii=1:400
 for i=1:(N_check-1)
     %k1
@@ -181,17 +185,18 @@ end
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,N_mesh),[2 1 3]),helm.n*helm.m,N_mesh);  
         
     %TODO: better calculation of norm
-    err=gather(max(sqrt(sum(abs(ucoeff-ucoeffp).^2,2))));
+    err=gather(max(sqrt(sum(abs(ucoeff-ucoeffp).^2,2))))/helm.dt;
+    err2=max(abs(S.*(Mvor*ucoeff)+Mgyro*ucoeff-Mlap*ucoeff-forcing),[],'all'); %TODO: this test does not converge!
     if err<epsilon || isnan(err) 
         break;
     end
-%         errMp1=gather(max(abs(Mint*(Mp1*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
-%         errMp3=gather(max(abs(Mint*(Mp3*(ucoeff-ucoeffp)))))*2*pi/helm.dt;
+%         errMp1=gather(max(abs(Mint*(Mp1*(ucoeff-ucoeffp)))))*2*pi/helm.dt
+%         errMp3=gather(max(abs(Mint*(Mp3*(ucoeff-ucoeffp)))))*2*pi/helm.dt
 %         if max(errMp1,errMp3)<epsilon || isnan(errMp1) 
 %             break;
 %         end
         
-% disp([num2str(ii*N_check) '    ' num2str(err) '  ' num2str(errMp1) '   ' num2str(errMp3) '   ' num2str(gather(max(abs(Mint*ucoeff)))*2*pi)]);
+disp([num2str(ii*N_check) '    ' num2str(err) '     ' num2str(err2) '     ' num2str(gather(max(abs(Mint*ucoeff)))*2*pi)]);
 end
 
 disp([num2str(ii*N_check) '    ' num2str(err) '     ' num2str(gather(max(abs(Mint*ucoeff)))*2*pi)]);

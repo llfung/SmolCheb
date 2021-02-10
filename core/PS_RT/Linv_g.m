@@ -1,11 +1,14 @@
-function [g,Linv]=Linv_g(S_profile,Mvor,Mgyro,Mlap,Mint)
+function [g,Linv]=Linv_g(S_profile,Mvor,Mgyro,Mlap,Mint,Msin,n,m)
     N_mesh=numel(S_profile);
-    nm=size(Mvor,2);
+    nm=n*m;
     g=NaN(nm,N_mesh);
-    Linv=NaN(nm,nm+1,N_mesh);
+    Linv=NaN(nm,nm,N_mesh);
     for j=1:N_mesh
-        Le=gather(S_profile(j)*Mvor+Mgyro-Mlap);
-        Linv(:,:,j)=pinv([full(Le);full(gather(Mint))]);
-        g(:,j)=Linv(:,:,j)*[zeros(nm,1);1/2/pi];
+        Le=Msin*gather(S_profile(j)*Mvor+Mgyro-Mlap);
+        Le(n*m/2+m/2+1,:)=Mint;
+        
+        Linv(:,:,j)=inv(full(Le));
+        
+        g(:,j)=Linv(:,:,j)*[zeros(n*m/2+m/2,1);1/2/pi;zeros(n*m/2-m/2-1,1)];
     end
 end
