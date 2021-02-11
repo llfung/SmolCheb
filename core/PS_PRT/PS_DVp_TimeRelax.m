@@ -11,12 +11,12 @@ dir='./';
 
 % load([dir 'Summary.mat']);
 
-[settings,Mvor,Mgyro,Mlap,Mlap_inv,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
 helm=helmholtz_genGPU( settings.n, settings.m);
 helm.dt=settings.dt*1;
 
 Msin=kron(spdiags(0.5i*ones(settings.n,1)*[-1,1], [-1 1], settings.n, settings.n),speye(settings.m));
-[g,Linv]=Linv_g(S_profile,Mvor,Mgyro,Mlap_inv,settings.Mint,Msin,n,m);
+[g,Linv]=Linv_g(S_profile,Mvor,Mgyro,Mlap,settings.Mint,Msin,n,m);
 [Transformed.ex_g,Transformed.ez_g,Transformed.Dxx_g,Transformed.Dxz_g,Transformed.Dzx_g,Transformed.Dzz_g,...
 Transformed.Vix_g,Transformed.Viz_g,Transformed.VDTx_g,Transformed.VDTz_g,Transformed.DDTxx_g,Transformed.DDTzx_g]=...
 Linv_f('x',g,Linv,Msin,Rdx,Rd2x,Mp1,Mp3,settings,zeros(1,N_mesh),n*m/2+m/2+1);

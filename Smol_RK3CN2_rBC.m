@@ -39,7 +39,7 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-[settings,Mvor,Mgyro,Mlap,Mlap_inv,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Mlap,Rdx,Rd2x,Mp1,Mp3,Mp1p3,~]=all_mat_gen(settings);
 
 Mint=settings.Mint;
 MintSq=settings.MintSq;

@@ -65,13 +65,17 @@ DF1m = diffmat_internal(m, 1, 1);
 DF2m = diffmat_internal(m, 2);
 DF2n = diffmat_internal(n, 2);
 
+Msin=spdiags(0.5i*ones(m,1)*[-1,1],[-1,1],m,m);
+Mcos=spdiags(0.5*ones(m,1)*[1,1],[-1,1],m,m);
 % Multiplication for sin(theta).*cos(theta):
 % Below is equivalent to
-Mcossin = spdiags(.25i*[-ones(m, 1) ones(m, 1)], [-2 2], m, m);
+%Mcossin = (spdiags(.25i*[-ones(m, 1) ones(m, 1)], [-2 2], m, m));
+Mcossin=Mcos*Msin; % Using this improve accuracy
 
 % Multiplication for sin(theta)^2:
 % Below is equivalent to
-Msin2 = spdiags(.5*[-.5*ones(m, 1) ones(m, 1) -.5*ones(m, 1)], [-2 0 2], m, m);
+% Msin2 = (spdiags(.5*[-.5*ones(m, 1) ones(m, 1) -.5*ones(m, 1)], [-2 0 2], m, m));
+Msin2=Msin*Msin; % Using this improve accuracy
 
 % Calculate the integral constraint constant:
 k = floor(n/2)+1;

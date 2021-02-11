@@ -1,4 +1,4 @@
-function [settings,Mvor,Mgyro,Mlap,Mlap_inv,Rd,Rd2,Mp1,Mp3,Mp1p3,Mp3sq]=all_mat_gen(settings)
+function [settings,Mvor,Mgyro,Mlap,Rd,Rd2,Mp1,Mp3,Mp1p3,Mp3sq]=all_mat_gen(settings)
 
 n=settings.n;
 m=settings.m;
@@ -27,7 +27,6 @@ Mgyro=settings.beta*adv_gyro_mat(settings);
 
 %Laplacian
 Mlap=lap_mat(settings);
-Mlap_inv=lap_mat(settings,1);
 
 Rd=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 0 3/4 -3/20 1/60],[3:-1:-3],N_mesh,N_mesh);
 Rd=spdiags(ones(N_mesh,1)*[-1/60 3/20 -3/4 3/4 -3/20 1/60],[-N_mesh+3:-1:-N_mesh+1 N_mesh-1:-1:N_mesh-3],Rd);
