@@ -63,8 +63,6 @@ classdef PS_RunTime
             end
 
             if obj.InvMeth
-                Mint=gather(obj.settings.Mint);
-                Mp1=gather(mats.Mp1);Mp3=gather(mats.Mp3);
                 Msin=kron(spdiags(0.5i*ones(settings.n,1)*[-1,1], [-1 1], settings.n, settings.n),speye(settings.m));
                 [g,Linv]=Linv_g(mats.S_profile,mats.Mvor,mats.Mgyro,mats.Mlap,settings.Mint,Msin,settings.n,settings.m);
                 obj.g=g;
@@ -75,9 +73,19 @@ classdef PS_RunTime
                     obj.Linv=gpuArray(Linv);
                     obj.Msin=gpuArray(Msin);
                 end
-                obj.Transformed.ex_g=real(Mint*(Mp1*g))*2*pi;
-                obj.Transformed.ez_g=real(Mint*(Mp3*g))*2*pi;
-                
+                if obj.varDir==1
+                    [obj.Transformed.ex_g,obj.Transformed.ez_g,...
+                        obj.Transformed.Dxx_g,obj.Transformed.Dxz_g,obj.Transformed.Dzx_g,obj.Transformed.Dzz_g,...
+                        obj.Transformed.Vix_g,obj.Transformed.Viz_g,obj.Transformed.VDTx_g,obj.Transformed.VDTz_g,...
+                        obj.Transformed.DDTxx_g,obj.Transformed.DDTzx_g]=...
+                        Linv_f('x',g,obj.Linv,obj.Msin,mats.Rdx,mats.Rd2x,mats.Mp1,mats.Mp3,settings,zeros(1,N_mesh),settings.n*settings.m/2+settings.m/2+1);
+                else
+                    [obj.Transformed.ex_g,obj.Transformed.ez_g,...
+                        obj.Transformed.Dxx_g,obj.Transformed.Dxz_g,obj.Transformed.Dzx_g,obj.Transformed.Dzz_g,...
+                        obj.Transformed.Vix_g,obj.Transformed.Viz_g,obj.Transformed.VDTx_g,obj.Transformed.VDTz_g,...
+                        obj.Transformed.DDTxz_g,obj.Transformed.DDTzz_g]=...
+                        Linv_f('z',g,obj.Linv,obj.Msin,mats.Rdz,mats.Rd2z,mats.Mp1,mats.Mp3,settings,zeros(1,N_mesh),settings.n*settings.m/2+settings.m/2+1);
+                end
                 if obj.varDir==1
                     obj.Transformed.DDTxx=NaN(floor(obj.settings.nsteps/obj.saving_rate1),obj.settings.N_mesh);
                     obj.Transformed.DDTzx=NaN(floor(obj.settings.nsteps/obj.saving_rate1),obj.settings.N_mesh);
