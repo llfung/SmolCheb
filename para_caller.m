@@ -18,7 +18,7 @@ clear all;
 %% Parameters
 % Numericals
 Vc=0.25;                   % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=1.;                     % Flow Peclet Number (Pe_f)
+Pef=1.;                    % Flow Peclet Number (Pe_f)
 Vsmin=0.;                  % Minimum sedimentaion (Vs)
 Vsvar=0.;                  % Vs_max-Vs_min
 
@@ -31,21 +31,21 @@ B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, dire
 
 % Discretisation
 dt = 0.01;                  % Time step
-tfinal = 1+dt*2;           % Stopping time
+tfinal = 200+dt*2;          % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 16;                     % Spherical discretization - phi (even)
-n = 20;                     % Spherical discretization - theta (even)
+n = 32;                     % Spherical discretization - theta (even)
 N_mesh=128;                 % Spatial discretization - x/z
 channel_width=2.;           % Rotational Diffusion constant (keep it at 2, for dimensional runs only)
 
 % Run settings
-saving_rate1=10;
-saving_rate2=50;
-saving_rate3=25;
+saving_rate1=100;
+saving_rate2=Inf;
+saving_rate3=100;
 
 % Others
 int_const=1.;
-Kp=0.01;
+Kp=0.001;
 
 epsInit=0.;
 
@@ -110,8 +110,8 @@ Nint=sum(cell_den,2)*dx;
 %% Gathering Data
 g=PS.g;
 Transformed=PS.export_struct();
-% [ex,ez,ex_g,ez_g,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTxz,DDTzz]=PS.export();
-% [ex,ez,ex_g,ez_g,Dxx,Dxz,Dzx,Dzz,Vix,Viz,VDTx,VDTz,DDTxx,DDTzx,Vux,Vuz]=PS.export();
+% [ex,ez,ex_g,ez_g,Dxx,Dxz,Dzx,Dzz,Dxx_g,Dxz_g,Dzx_g,Dzz_g,Vix,Viz,Vix_g,Viz_g,VDTx,VDTz,VDTx_g,VDTz_g,DDTxz,DDTzz,DDTxz_g,DDTzz_g]=PS.export();
+% [ex,ez,ex_g,ez_g,Dxx,Dxz,Dzx,Dzz,Dxx_g,Dxz_g,Dzx_g,Dzz_g,Vix,Viz,Vix_g,Viz_g,VDTx,VDTz,VDTx_g,VDTz_g,DDTxz,DDTzz,DDTxz_g,DDTzz_g,Vux,Vuz]=PS.export();
 
 settings.Mint=gather(settings.Mint);
 S_profile=gather(S_profile);

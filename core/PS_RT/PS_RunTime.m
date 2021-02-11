@@ -78,13 +78,13 @@ classdef PS_RunTime
                         obj.Transformed.Dxx_g,obj.Transformed.Dxz_g,obj.Transformed.Dzx_g,obj.Transformed.Dzz_g,...
                         obj.Transformed.Vix_g,obj.Transformed.Viz_g,obj.Transformed.VDTx_g,obj.Transformed.VDTz_g,...
                         obj.Transformed.DDTxx_g,obj.Transformed.DDTzx_g]=...
-                        Linv_f('x',g,obj.Linv,obj.Msin,mats.Rdx,mats.Rd2x,mats.Mp1,mats.Mp3,settings,zeros(1,N_mesh),settings.n*settings.m/2+settings.m/2+1);
+                        Linv_f('x',g,obj.Linv,obj.Msin,mats.Rdx,mats.Rd2x,mats.Mp1,mats.Mp3,settings,zeros(1,settings.N_mesh),settings.n*settings.m/2+settings.m/2+1);
                 else
                     [obj.Transformed.ex_g,obj.Transformed.ez_g,...
                         obj.Transformed.Dxx_g,obj.Transformed.Dxz_g,obj.Transformed.Dzx_g,obj.Transformed.Dzz_g,...
                         obj.Transformed.Vix_g,obj.Transformed.Viz_g,obj.Transformed.VDTx_g,obj.Transformed.VDTz_g,...
                         obj.Transformed.DDTxz_g,obj.Transformed.DDTzz_g]=...
-                        Linv_f('z',g,obj.Linv,obj.Msin,mats.Rdz,mats.Rd2z,mats.Mp1,mats.Mp3,settings,zeros(1,N_mesh),settings.n*settings.m/2+settings.m/2+1);
+                        Linv_f('z',g,obj.Linv,obj.Msin,mats.Rdz,mats.Rd2z,mats.Mp1,mats.Mp3,settings,zeros(1,settings.N_mesh),settings.n*settings.m/2+settings.m/2+1);
                 end
                 if obj.varDir==1
                     obj.Transformed.DDTxx=NaN(floor(obj.settings.nsteps/obj.saving_rate1),obj.settings.N_mesh);
@@ -214,22 +214,34 @@ classdef PS_RunTime
                 varargout{6}=obj.Transformed.Dxz;
                 varargout{7}=obj.Transformed.Dzx;
                 varargout{8}=obj.Transformed.Dzz;
-                varargout{9}=obj.Transformed.Vix;
-                varargout{10}=obj.Transformed.Viz;
-                varargout{11}=obj.Transformed.VDTx;
-                varargout{12}=obj.Transformed.VDTz;
+                varargout{9}=obj.Transformed.Dxx_g;
+                varargout{10}=obj.Transformed.Dxz_g;
+                varargout{11}=obj.Transformed.Dzx_g;
+                varargout{12}=obj.Transformed.Dzz_g;
+                varargout{13}=obj.Transformed.Vix;
+                varargout{14}=obj.Transformed.Viz;
+                varargout{15}=obj.Transformed.Vix_g;
+                varargout{16}=obj.Transformed.Viz_g;
+                varargout{17}=obj.Transformed.VDTx;
+                varargout{18}=obj.Transformed.VDTz;
+                varargout{19}=obj.Transformed.VDTx_g;
+                varargout{20}=obj.Transformed.VDTz_g;                
                 
                 if obj.varDir==1
                     varargout{13}=obj.Transformed.DDTxx;
                     varargout{14}=obj.Transformed.DDTzx;
+                    varargout{15}=obj.Transformed.DDTxx_g;
+                    varargout{16}=obj.Transformed.DDTzx_g;
                 elseif obj.varDir==2
                     varargout{13}=obj.Transformed.DDTxz;
                     varargout{14}=obj.Transformed.DDTzz;
+                    varargout{15}=obj.Transformed.DDTxx_g;
+                    varargout{16}=obj.Transformed.DDTzx_g;
                 end
                 
-                if obj.InvMeth>2 && nargout > 14
-                    varargout{15}=obj.Transformed.Vux;
-                    varargout{16}=obj.Transformed.Vuz;
+                if obj.InvMeth>2 && nargout > 16
+                    varargout{17}=obj.Transformed.Vux;
+                    varargout{18}=obj.Transformed.Vuz;
                 end
             else
                 varargout = cell(1,nargout);
