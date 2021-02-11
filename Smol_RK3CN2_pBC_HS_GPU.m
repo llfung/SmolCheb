@@ -7,30 +7,6 @@
 % chebfun-based activiities). 
 
 %% Setting up
-%Saving to settings struct
-settings.beta=beta;
-settings.B=B;
-settings.Vc=Vc;
-settings.n=n;
-settings.m=m;
-settings.diff_const=diff_const;
-settings.dt=dt;
-settings.d_spatial=dz;
-settings.N_mesh=N_mesh;
-settings.Kp=Kp;
-settings.nsteps=nsteps;
-
-settings.omg1=G(2,3)-G(3,2);
-settings.omg2=G(3,1)-G(1,3);
-settings.omg3=G(1,2)-G(2,1);
-settings.e11=G(1,1);
-settings.e12=G(1,2)+G(2,1);
-settings.e13=G(3,1)+G(1,3);
-settings.e22=G(2,2);
-settings.e23=G(2,3)+G(3,2);
-settings.e33=G(3,3);
-settings.int_const=int_const;
-
 % RK3 coeff and constants
 alpha=[4/15 1/15 1/6];
 gamma=[8/15 5/12 3/4];
@@ -227,5 +203,6 @@ for i = 1:nsteps
     % Saving Cell Density
     if ( mod(i, saving_rate3) == 0 )
         cell_den(i/saving_rate3,:)=gather(cell_den_loc);
+        disp([num2str(i) '/' num2str(nsteps)]);
     end    
 end

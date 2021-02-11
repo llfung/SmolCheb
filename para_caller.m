@@ -83,6 +83,30 @@ G= [0 0 1; ...
 % S_profile=x*Pef;                    % W(x)=-(1-x^2)
 % S_profile=Pef/2*ones(size(x));      % W(x)=x
 
+%% Saving to settings struct
+settings.beta=beta;
+settings.B=B;
+settings.Vc=Vc;
+settings.n=n;
+settings.m=m;
+settings.diff_const=diff_const;
+settings.dt=dt;
+settings.d_spatial=dz;
+settings.N_mesh=N_mesh;
+settings.Kp=Kp;
+settings.nsteps=nsteps;
+
+settings.omg1=G(2,3)-G(3,2);
+settings.omg2=G(3,1)-G(1,3);
+settings.omg3=G(1,2)-G(2,1);
+settings.e11=G(1,1);
+settings.e12=G(1,2)+G(2,1);
+settings.e13=G(3,1)+G(1,3);
+settings.e22=G(2,2);
+settings.e23=G(2,3)+G(3,2);
+settings.e33=G(3,3);
+settings.int_const=int_const;
+
 %% Initial Condition
 ucoeff0=zeros(n*m,N_mesh);
 ucoeff0(m*n/2+m/2+1,:)=int_const/4/pi/channel_width;
