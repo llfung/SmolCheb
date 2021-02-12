@@ -6,13 +6,20 @@ function Madv=adv_strain_mat(settings)
     diagEterm = settings.e11+settings.e22-settings.e33*2;
     Mcosm  = spdiags(.5 *ones(m,1)*[ 1,1], [-1 1], m, m); %cos phi
     Msinm  = spdiags(.5i*ones(m,1)*[-1,1], [-1 1], m, m); %sin phi
-%     Mcosn  = spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n); %cos theta
-%     Msinn  = spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n); %sin theta
-    Mcos2m = spdiags(.5 *ones(m,1)*[ 1,1], [-2 2], m, m); %cos 2phi
-    Msin2m = spdiags(.5i*ones(m,1)*[-1,1], [-2 2], m, m); %sin 2phi
-    Mcos2n = spdiags(.5 *ones(n,1)*[ 1,1], [-2 2], n, n); %cos 2theta
-    Msin2n = spdiags(.5i*ones(n,1)*[-1,1], [-2 2], n, n); %sin 2theta
-    Msinsqn = spdiags(.5*ones(n,1)*[-1/2,1,-1/2], [-2 0 2], n, n); %sin 2theta 
+    Mcosn  = spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n); %cos theta
+    Msinn  = spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n); %sin theta
+    
+%     Mcos2m = spdiags(.5 *ones(m,1)*[ 1,1], [-2 2], m, m); %cos 2phi
+    Mcos2m = 2*Mcosm*Mcosm-speye(m);
+%     Msin2m = spdiags(.5i*ones(m,1)*[-1,1], [-2 2], m, m); %sin 2phi
+    Msin2m = 2*Mcosm*Msinm;
+    
+%     Mcos2n = spdiags(.5 *ones(n,1)*[ 1,1], [-2 2], n, n); %cos 2theta
+    Mcos2n = 2*Mcosn*Mcosn-speye(n);
+%     Msin2n = spdiags(.5i*ones(n,1)*[-1,1], [-2 2], n, n); %sin 2theta
+    Msin2n = 2*Mcosn*Msinn;
+%     Msinsqn = spdiags(.5*ones(n,1)*[-1/2,1,-1/2], [-2 0 2], n, n); %sin^2 theta 
+    Msinsqn = Msinn*Msinn;
     
     Madv = (diagEterm*(speye(m*n)+3*kron(Mcos2n,speye(m)))...
         -12*kron(Msin2n,settings.e13*Mcosm+settings.e23*Msinm)...
