@@ -1,4 +1,7 @@
 *.mat
 *.MATLABDriveTag
-PS/
 figs/
+vids/
+trash/
+*.fig
+*.eps

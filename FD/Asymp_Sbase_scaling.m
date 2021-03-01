@@ -184,18 +184,6 @@ parfor ii=1:N_loop
     rese_array(ii,:)=rese_temp;
     
     %% Vc
-
-%     for jj=1:length(Sp_loop)
-%             LHSLad=L_ad_FD_LHS(settings_loc);
-%             RHS=LHSLad*f_sol;
-%             RHSmat=transpose(reshape(LHSLad*f_sol,settings_loc.n_phi,settings_loc.n_theta));
-%             RHSmat(b_endings(1:2),:)=0;
-%             RHScol=reshape(transpose(RHSmat),(settings_loc.n_theta)*settings_loc.n_phi,1);
-%             h13=LHS_euler\[RHScol;0];
-%             ph113=transpose(reshape(h13(1:settings_loc.N_total),settings_loc.n_phi,settings_loc.n_theta)).*e_all_field(:,:,1);
-%             fc_e=settings_loc.integrad*mean(ph113,2)*f0-ph113;
-%             Vc1(ii)=Sp_loop(ii)*settings_loc.integrad*mean(fc_e.*e_all_field(:,:,1),2);
-%     end
     g(:,ii)=f_sol;
     disp([num2str(ii) '/' num2str(N_loop)]);
     
