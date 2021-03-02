@@ -119,7 +119,8 @@ t1=dt*saving_rate1:dt*saving_rate1:tfinal;
 t2=dt*saving_rate2:dt*saving_rate2:tfinal;
 t3=dt*saving_rate3:dt*saving_rate3:tfinal;
 
-Nint=Nint_loc;
+Nint=gather(Nint_loc);
+int_const=gather(int_const);
 
 %% Gathering Data
 % g=PS.g;
