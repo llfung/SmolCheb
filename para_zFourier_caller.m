@@ -17,28 +17,31 @@ clear all;
 
 %% Parameters
 % Numericals
-Vc=0.025;                   % Swimming Speed (scaled by channel width and Dr) (Pe_s)
+Vc=0.0025;                   % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 Pef=0.5;                    % Flow Peclet Number (Pe_f)
 Vsmin=0.;                  % Minimum sedimentaion (Vs)
 Vsvar=0.;                  % Vs_max-Vs_min
 
 diff_const = 1;            % Rotational Diffusion constant (keep it at 1, for dimensional runs only)
-DT=0.;                     % Translational Diffusion constant
-beta=2.2;                  % Gyrotactic time scale
+DT=0.000;                     % Translational Diffusion constant
+% DTxx=0.00005;
+% DTzz=0.00013;
+% DTxz=0.00009;
+beta=0;                  % Gyrotactic time scale
 % AR=20;                   % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
 % B=(AR^2-1)/(AR^2+1);     % Bretherton Constant of swimmer (a.k.a. alpha0, through AR)
-B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
+B=0.;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
 
 % Discretisation
 dt = 0.0025;                  % Time step
-tfinal = 1+dt*2;          % Stopping time
+tfinal = 5+dt*2;          % Stopping time
 nsteps = ceil(tfinal/dt);   % Number of time steps
 m = 8;                      % Spherical discretization - phi (even)
-n = 12;                     % Spherical discretization - theta (even)
-Nx_mesh=96;                 % Spatial discretization - x
-Nz_mesh=128;                % Spectral discretization - z
+n = 8;                     % Spherical discretization - theta (even)
+Nx_mesh=256;                 % Spatial discretization - x
+Nz_mesh=256;                % Spectral discretization - z
 x_width=2.;                 % Channel Width  (keep it at 2, for dimensional runs only)
-z_width=8.;                 % Channel Height (keep it at 2, for dimensional runs only)
+z_width=4.;                 % Channel Height (keep it at 2, for dimensional runs only)
 
 % Run settings
 saving_rate1=100;
@@ -47,9 +50,14 @@ saving_rate3=40;
 
 % Others
 int_const=1.;
-Kp=0.001;
+Kp=0.0001;
 
-epsInit=0.005;
+%epsInit=0.007;
+epsInitx=0.005;
+epsInitz=0.005;
+rhoxz=0;
+sigmax=sqrt(2*epsInitx);
+sigmaz=sqrt(2*epsInitz);
 
 %% Preliminary Meshing
 dx=x_width/(Nx_mesh);
@@ -105,14 +113,19 @@ settings.e33=G(3,3);
 settings.int_const=int_const;
 
 %% Initial Condition
-norm_distrx=exp(-x.^2/epsInit);
-norm_distrx=norm_distrx/(sum(norm_distrx)*dx);
-norm_distrz=exp(-z.^2/epsInit);
-norm_distrz=norm_distrz/(sum(norm_distrz)*dz);
-norm_distrz_T=fft(norm_distrz)/Nz_mesh;
+% norm_distrx=exp(-x.^2/epsInitx);
+% norm_distrx=norm_distrx/(sum(norm_distrx)*dx);
+% norm_distrz=exp(-z.^2/epsInitz);
+% norm_distrz=norm_distrz/(sum(norm_distrz)*dz);
+% norm_distrz_T=fft(norm_distrz)/Nz_mesh;
+
+% norm_distr=exp(-1/2/(1-rhoxz^2)*((x'/sigmax).^2+(z/sigmaz).^2-2*rhoxz*(x'*z)/sigmax/sigmaz));
+% norm_distr=norm_distr/(sum(norm_distr,'all')*dx*dz);
+% norm_distr_T=fft(norm_distr,[],2)/Nz_mesh;
 
 %% Call Run Script
 Smol_RK3CN2_xpBC_zFourier_GPU;
+% Trans_RK3CN2_xpBC_zFourier_GPU;
 
 %% Final PS
 t1=dt*saving_rate1:dt*saving_rate1:tfinal;
@@ -133,16 +146,13 @@ S_profile=gather(S_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
 
-ex_file_name=['smol_pBC_2D_' num2str(epsInit) 'epsInit_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_homo_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
-% ex_file_name=['smol_pBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
-% ex_file_name=['smol_rBC_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
-% ex_file_name=['smol_rBC_HS_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_' num2str(Pef) 'Pef_cospi_cd' num2str(N_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_2DVS_' num2str(epsInit) 'epsInit_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vsmin) 'Vsm_' num2str(Vsvar) 'Vsv_' num2str(Vc) 'Vc_' num2str(DT) 'DT_'  num2str(Pef) 'Pef_homo_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_tf' num2str(tfinal)];
 
-save('Summary.mat',...
+save([ex_file_name '.mat'],...
     'Vc','Pef','Vsmin','Vsvar',...
-    'diff_const','DT','beta','B',...'AR',...
+    'diff_const','beta','B','DT',...'DTxx','DTzz','DTxz'...'AR',...
     'dt','tfinal','nsteps','m','n','Nx_mesh','Nz_mesh','x_width','z_width',...
-    'int_const','Kp','epsInit',...
+    'int_const','Kp','epsInit',...'sigmax','sigmaz','rhoxz',...
     'x','dx','z','dz',...
     'S_profile','G','ucoeff0',...
     't1','t2','t3',...

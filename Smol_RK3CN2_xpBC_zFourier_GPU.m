@@ -82,9 +82,15 @@ rowDzz=gpuArray(kron(ifftshift((-(Nz_mesh/2):(Nz_mesh/2)-1).^2*alphaK^2*(-1)),on
 Nint_row=gpuArray([ones(1,Nx_mesh)*dx*z_width zeros(1,(Nz_mesh-1)*Nx_mesh)]');
 
 %% Initial Condition
-[f_init,~]=Linv_g(S_profile(Nx_mesh/2+Nx_mesh*Nz_mesh/2-Nz_mesh),Mvor,Mgyro,Mlap,Mint,Msin,n,m);
+% Single particle at origin with f(p)=g(p)
+% [f_init,~]=Linv_g(S_profile(Nx_mesh/2+Nx_mesh*Nz_mesh/2-Nz_mesh),Mvor,Mgyro,Mlap,Mint,Msin,n,m);
+% ucoeff0=gather(f_init)*reshape(transpose(norm_distrx)*norm_distrz_T,1,[]);
 
-ucoeff0=gather(f_init)*reshape(transpose(norm_distrx)*norm_distrz_T,1,[]);
+% Uniform suspension
+f_init=zeros(n*m,1);
+f_init(m*n/2+m/2+1,:)=int_const/4/pi;
+ucoeff0=gather(f_init)*reshape(norm_distr_T,1,[]);
+
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),Nx_mesh*Nz_mesh);
