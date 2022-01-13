@@ -291,39 +291,37 @@ ucoeff0=ucoeff0.*reshape(norm_distrz*norm_distrx,1,[]);
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
 
-ufull_save=NaN(n*m,Nz_mesh*Nx_mesh,floor(nsteps/saving_rate2));
-
-ex=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-ez=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-exz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); %For Average sedimentation (varying part)
-ezz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); %For Average sedimentation (varying part)
-
-Dxx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dzx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dxz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dzz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Vix=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % inhomogeneous swimming
-Viz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % inhomogeneous swimming
-Vux=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % unsteadiness
-Vuz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % unsteadiness
-Vax=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % tracer advection by flow
-Vaz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % tracer advection by flow
-
-VDTx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-VDTz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-DDTxx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-DDTxz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-DDTzx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-DDTzz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-
-Vswimminx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Vswimminz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Vswimvarx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Vswimvarz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dswimxx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dswimxz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dswimzx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
-Dswimzz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% ex=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% ez=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% exz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); %For Average sedimentation (varying part)
+% ezz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); %For Average sedimentation (varying part)
+% 
+% Dxx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dzx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dxz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dzz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Vix=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % inhomogeneous swimming
+% Viz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % inhomogeneous swimming
+% Vux=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % unsteadiness
+% Vuz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % unsteadiness
+% Vax=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % tracer advection by flow
+% Vaz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh); % tracer advection by flow
+% 
+% VDTx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% VDTz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% DDTxx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% DDTxz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% DDTzx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% DDTzz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% 
+% Vswimminx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Vswimminz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Vswimvarx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Vswimvarz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dswimxx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dswimxz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dswimzx=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
+% Dswimzz=NaN(floor(nsteps/saving_rate3),Nz_mesh*Nx_mesh);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
@@ -440,9 +438,11 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing
     %    Plot/Save the solution every saving_rate
-%     if ( mod(i, saving_rate2) == 0 )
-%         ufull_save(:,:,i/saving_rate2)=gather(ucoeff);
-%     end
+    if ( mod(i, saving_rate2) == 0 )
+        ufull_save=gather(ucoeff);
+        t=i*dt;
+        save(['smol_pBC_2D_t' num2str(t) '.mat'],'t','ufull_save');
+    end
     
     %% On-the-go-Post-Processing
      if ( mod(i, saving_rate3) == 0 )
@@ -540,11 +540,11 @@ save([ex_file_name 'GPU.mat'],...
     'dt','tfinal','settings','Kp','x','dx','z','dz','x_width','z_width','epsInit',...
     'saving_rate2','saving_rate3',...
     't2','t3','Nint','cell_den',...
-    'ufull_save','ucoeff','ucoeff0',...
-    'Dswimxx','Dswimxz','Dswimzx','Dswimzz',...
-    'Vswimvarz','Vswimvarx','Vswimminx','Vswimminz','VDTx','VDTz',...
-    'Dxx','Dxz','Dzx','Dzz','Vix','Viz','Vux','Vuz','ex','ez','exz','ezz',...
-    'DDTxx','DDTxz','DDTzx','DDTzz','Vaz','Vax',...
+    'ucoeff','ucoeff0',...
+...%     'Dswimxx','Dswimxz','Dswimzx','Dswimzz',...
+...%     'Vswimvarz','Vswimvarx','Vswimminx','Vswimminz','VDTx','VDTz',...
+...%     'Dxx','Dxz','Dzx','Dzz','Vix','Viz','Vux','Vuz','ex','ez','exz','ezz',...
+...%     'DDTxx','DDTxz','DDTzx','DDTzz','Vaz','Vax',...
     '-v7.3');
 
 exit
