@@ -1,13 +1,13 @@
 %% Asymptotic Library Generation 
-% Based on Fung, Bearon, Hwang (2021, JFM), Section 4
+% Based on Fung, Bearon, Hwang (2022, JFM), Section 4
 % Assuming parabolic profile in vertical flow Pef W(x)=(1-x^2)*Pef
 % S defined as (-Pef/2)* W'(x)
 
 % par=parpool(16);
 clear all
 
-Pef_array=[0.1:0.1:16 16.25:0.25:20 20.5:0.5:32 34:2:128 132:4:256 2.^(9:14)]; 
-for jjj=1:length(Pef_array)
+% Pef_array=[0.1:0.1:16 16.25:0.25:20 20.5:0.5:32 34:2:128 132:4:256 2.^(9:14)]; 
+% for jjj=1:length(Pef_array)
 %% Define discretization parameters
 settings.n_phi=32; % Has to be even for FFT. 2^N recommended
 settings.n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cote
@@ -76,7 +76,8 @@ settings.B=0.31;
 % N_mesh=Pef_array(jjj)*32;
 N_mesh=2048;
 
-Pef=Pef_array(jjj);
+% Pef=Pef_array(jjj);
+Pef=1;
 
 dx=2/(N_mesh);
 x=-1-3*dx:dx:1+2*dx;
@@ -237,5 +238,5 @@ S_loop=S_loop(4:end-3);
 Sp_loop=Sp_loop(4:end-3);
 clearvars settings e_all_field e1_field e2_field e3_field par;
 save([name '.mat']);
-end
-exit
+% end
+% exit
