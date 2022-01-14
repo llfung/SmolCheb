@@ -16,7 +16,7 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-[settings,Mvor,Mgyro,Mlap,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Minert,Mlap,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
 
 % mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
 %     'Mp1',Mp1,'Mp3',Mp3,'Rdz',Rdz,'Rd2z',Rd2z); settings_CPU=settings; % If CPU PS is used.
@@ -70,7 +70,7 @@ Mp3 = gpuArray(sparse(complex(full(Mp3))));
 Mp3sq = gpuArray(sparse(complex(full(Mp3sq))));
 
 %Swimming and sedimentation
-MSwim=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-Vsvar*Mp3sq;
+MSwim=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-Vsmax*Mp3sq;
 
 mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
     'Mp1',Mp1,'Mp3',Mp3,'Rdz',Rdz,'Rd2z',Rd2z);  % If GPU PS is used.
@@ -98,6 +98,7 @@ for i = 1:nsteps
     dz2u_coeff=ucoeff*Rd2z;
     
     adv_coeff=S_profile.*(Mvor*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=adv_coeff+Minert*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     
     lap_coeff=Mlap*ucoeff;
@@ -132,6 +133,7 @@ for i = 1:nsteps
     dz2u_coeff=ucoeff*Rd2z;
     
     adv_coeff=S_profile.*(Mvor*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=adv_coeff+Minert*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     
     lap_coeff=Mlap*ucoeff;
@@ -167,6 +169,7 @@ for i = 1:nsteps
     adv_p_coeff=adv_comb_coeff;
     
     adv_coeff=S_profile.*(Mvor*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=adv_coeff+Minert*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     
     lap_coeff=Mlap*ucoeff;

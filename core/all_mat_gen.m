@@ -1,4 +1,4 @@
-function [settings,Mvor,Mgyro,Mlap,Rd,Rd2,Mp1,Mp3,Mp1p3,Mp3sq]=all_mat_gen(settings)
+function [settings,Mvor,Mgyro,Minert,Mlap,Rd,Rd2,Mp1,Mp3,Mp1p3,Mp3sq]=all_mat_gen(settings)
 
 n=settings.n;
 m=settings.m;
@@ -24,6 +24,9 @@ settings.Kp=settings.Kp/MintSq/settings.diff_const/settings.dt;
 % Advection
 Mvor=adv_vor_mat(settings)+settings.B*adv_strain_mat(settings);
 Mgyro=settings.beta*adv_gyro_mat(settings);
+MVminVmax=adv_inertial_VminVmax_mat(settings);
+MVminVc=adv_inertial_VminVc_mat(settings);
+Minert=settings.M*settings.inv_nu*settings.Vsmin*(settings.Vsmax*MVminVmax+settings.Vc*MVminVc);
 
 %Laplacian
 Mlap=lap_mat(settings);

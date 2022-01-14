@@ -19,15 +19,17 @@ clear all;
 % Numericals
 Vc=0.25;                   % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 Pef=1.;                    % Flow Peclet Number (Pe_f)
-Vsmin=0.;                  % Minimum sedimentaion (Vs)
-Vsvar=0.;                  % Vs_max-Vs_min
+inv_nu=100;                % h*^2 dr^* / (kinematic viscosity)
+Vs=0.25;                   % Sedimentation speed scaling (delta rho g / mu *(2/9) * b^2 / (h^*dr^*), b=semi-minor
 
 diff_const = 1;            % Rotational Diffusion constant (keep it at 1, for dimensional runs only)
 DT=0.;                     % Translational Diffusion constant
 beta=2.2;                  % Gyrotactic time scale
-% AR=20;                   % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
-% B=(AR^2-1)/(AR^2+1);     % Bretherton Constant of swimmer (a.k.a. alpha0, through AR)
-B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
+AR=20;                     % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
+[B,Vmin,Vmax,M]=ellipsoid(AR);
+% B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
+Vsmin=Vs*Vmin;              % Minimum sedimentaion (Vs)
+Vsmax=Vs*Vmax;              % Vs_max-Vs_min
 
 % Discretisation
 dt = 0.01;                  % Time step
@@ -50,10 +52,10 @@ Kp=0.001;
 epsInit=0.;
 
 %% Preliminary Meshing
-dx=channel_width/(N_mesh);
-x=-(channel_width/2):dx:(channel_width/2)-dx;
-% dz=channel_width/(N_mesh);
-% z=-(channel_width/2):dz:(channel_width/2)-dz;
+% dx=channel_width/(N_mesh);
+% x=-(channel_width/2):dx:(channel_width/2)-dx;
+dz=channel_width/(N_mesh);
+z=-(channel_width/2):dz:(channel_width/2)-dz;
 
 % cheb=chebyshev(N_mesh,2,bc_type.none,tran_type.none);
 % x=cheb.col_pt;Rdx=(cheb.D(1))';Rd2x=(cheb.D(2))';
@@ -62,23 +64,23 @@ x=-(channel_width/2):dx:(channel_width/2)-dx;
 
 %% Flow Config
 % Vertical Shear (VS)
-G= [0 0 1; ...
-    0 0 0; ...
-    0 0 0];
-% Horizontal Shear (HS)
-% G= [0 0 0; ...
+% G= [0 0 1; ...
 %     0 0 0; ...
-%     1 0 0];
+%     0 0 0];
+% Horizontal Shear (HS)
+G= [0 0 0; ...
+    0 0 0; ...
+    1 0 0];
 
 % Shear Profile
 % Vertical Shear (VS)
     % W_profile=(-cos(pi*x)-1)*Pef;   % W(x)=-cos(pi x)-1
-    S_profile=pi*sin(pi*x)*Pef/2;     % .5*dW(x)/dx=pi*sin(pi x)/2
-    S_profile(1)=0;
+%     S_profile=pi*sin(pi*x)*Pef/2;     % .5*dW(x)/dx=pi*sin(pi x)/2
+%     S_profile(1)=0;
 % Horizontal Shear (HS)
 %     % U_profile=(cos(pi*z)+1)*Pef;     % U(z)=cos(pi x)+1
-%     S_profile=-pi*sin(pi*z)*Pef/2;     % .5*dU(z)/dz=-pi*sin(pi x)/2
-%     S_profile(1)=0;
+    S_profile=-pi*sin(pi*z)*Pef/2;     % .5*dU(z)/dz=-pi*sin(pi x)/2
+    S_profile(1)=0;
 % Others
 % S_profile=x*Pef;                    % W(x)=-(1-x^2)
 % S_profile=Pef/2*ones(size(x));      % W(x)=x
@@ -87,12 +89,16 @@ G= [0 0 1; ...
 settings.beta=beta;
 settings.B=B;
 settings.Vc=Vc;
+settings.inv_nu=inv_nu;
+settings.M=M;
+settings.Vsmin=Vsmin;
+settings.Vsmax=Vsmax;
 settings.n=n;
 settings.m=m;
 settings.diff_const=diff_const;
 settings.dt=dt;
-settings.d_spatial=dx;
-% settings.d_spatial=dz;
+% settings.d_spatial=dx;
+settings.d_spatial=dz;
 settings.N_mesh=N_mesh;
 settings.Kp=Kp;
 settings.nsteps=nsteps;
@@ -118,8 +124,8 @@ ucoeff0(m*n/2+m/2+1,:)=int_const/4/pi/channel_width;
 
 %% Call Run Script
 % Smol_RK3CN2_pBC;
-Smol_RK3CN2_pBC_GPU;
-% Smol_RK3CN2_pBC_HS;
+% Smol_RK3CN2_pBC_GPU;
+Smol_RK3CN2_pBC_HS;
 % Smol_RK3CN2_pBC_HS_GPU;
 % Smol_RK3CN2_rBC;
 % Smol_RK3CN2_rBC_HS;

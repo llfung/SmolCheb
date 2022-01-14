@@ -16,7 +16,7 @@ rho=[0 -17/60 -5/12];
 K2 = (1/(dt*diff_const));         % Helmholtz frequency for BDF1
 
 %% Initialising Matrices
-[settings,Mvor,Mgyro,Mlap,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
+[settings,Mvor,Mgyro,Minert,Mlap,Rdz,Rd2z,Mp1,Mp3,~,Mp3sq]=all_mat_gen(settings);
 
 Mint=settings.Mint;
 MintSq=settings.MintSq;
@@ -29,7 +29,7 @@ mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',M
 helm=helmholtz_gen( n, m);
 
 %Swimming and sedimentation
-MSwim=Vc*Mp3-Vsmin*speye(n*m)-Vsvar*Mp3sq;
+MSwim=Vc*Mp3-Vsmin*speye(n*m)-Vsmax*Mp3sq;
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
@@ -51,8 +51,9 @@ for i = 1:nsteps
     % Par-For Version
     dzu_coeff=ucoeff*Rdz;
     dz2u_coeff=ucoeff*Rd2z;
-    parfor j=1:N_mesh
+    for j=1:N_mesh
         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
+        adv_coeff=adv_coeff+Minert*ucoeff(:,j);
         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
@@ -77,6 +78,7 @@ for i = 1:nsteps
     dz2u_coeff=ucoeff*Rd2z;
     parfor j=1:N_mesh
         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
+        adv_coeff=adv_coeff+Minert*ucoeff(:,j);
         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
@@ -102,6 +104,7 @@ for i = 1:nsteps
     adv_p_coeff=adv_comb_coeff;
     parfor j=1:N_mesh
         adv_coeff=S_profile(j)*(Mvor*ucoeff(:,j))+Mgyro*ucoeff(:,j);
+        adv_coeff=adv_coeff+Minert*ucoeff(:,j);
         adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
         
         lap_coeff=Mlap*ucoeff(:,j);
