@@ -19,13 +19,17 @@ clear all;
 % Numericals
 Vc=0.25;                   % Swimming Speed (scaled by channel width and Dr) (Pe_s)
 Pef=1;                    % Flow Peclet Number (Pe_f)
+inv_nu=100;                % h*^2 dr^* / (kinematic viscosity)
+Vs=0.25;                   % Sedimentation speed scaling (delta rho g / mu *(2/9) * b^2 / (h^*dr^*), b=semi-minor
 
 diff_const = 1;            % Rotational Diffusion constant (keep it at 1, for dimensional runs only)
 DT=0.000;                     % Translational Diffusion constant
 beta=2.2;                  % Gyrotactic time scale
-% AR=20;                   % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
-% B=(AR^2-1)/(AR^2+1);     % Bretherton Constant of swimmer (a.k.a. alpha0, through AR)
-B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
+AR=20;                     % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
+[B,Vmin,Vmax,M]=ellipsoid(AR);
+% B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
+Vsmin=Vs*Vmin;              % Minimum sedimentaion (Vs)
+Vsmax=Vs*Vmax;              % Vs_max-Vs_min
 
 % Discretisation
 dt = 0.00005;                  % Time step
@@ -65,6 +69,10 @@ curl_profile=gpuArray(reshape(sin(pi*x')*sin(pi*z)*Pef*pi*2,1,Nx_mesh*Nz_mesh));
 settings.beta=beta;
 settings.B=B;
 settings.Vc=Vc;
+settings.inv_nu=inv_nu;
+settings.M=M;
+settings.Vsmin=Vsmin;
+settings.Vsmax=Vsmax;
 settings.n=n;
 settings.m=m;
 settings.diff_const=diff_const;
@@ -108,6 +116,9 @@ settings.Kp=settings.Kp/MintSq/settings.diff_const/settings.dt;
 Mvor=adv_vor_mat(settings);
 Mstrain=settings.B*adv_strain_mat(settings);
 Mgyro=settings.beta*adv_gyro_mat(settings);
+MVminVmax=adv_inertial_VminVmax_mat(settings);
+MVminVc=adv_inertial_VminVc_mat(settings);
+Minert=settings.M*settings.inv_nu*settings.Vsmin*(settings.Vsmax*MVminVmax+settings.Vc*MVminVc);
 
 %Laplacian
 Mlap=lap_mat(settings);
@@ -160,11 +171,11 @@ E_profile=gather(E_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
 
-ex_file_name=['smol_pBC_bearon2011_' num2str(beta) 'beta_' num2str(B) 'B_' num2str(Vc) 'Vc_' num2str(DT) 'DT_'  num2str(Pef) 'Pef_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_ti' num2str(ti) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_conv_' num2str(beta) 'beta_' num2str(AR) 'AR_' num2str(Vc) 'Vc_' num2str(Vs) 'Vs_' num2str(1/nu) 'nu_' num2str(DT) 'DT_'  num2str(Pef) 'Pef_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_ti' num2str(ti) '_tf' num2str(tfinal)];
 
 save([ex_file_name '.mat'],...
-    'Vc','Pef',...
-    'diff_const','beta','B','DT',...
+    'Vc','Pef','AR','inv_nu','Vs',...
+    'diff_const','beta','DT',...
     'dt','ti','tfinal','nsteps','m','n','Nx_mesh','Nz_mesh','x_width','z_width',...
     'int_const','Kp',...
     'x','dx','z','dz',...

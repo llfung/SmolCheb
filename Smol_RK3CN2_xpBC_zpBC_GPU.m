@@ -67,8 +67,8 @@ Mp1 = gpuArray(complex(Mp1));
 Mp3 = gpuArray(complex(Mp3));
 
 %Swimming and sedimentation
-MSwim_dx=Vc*Mp1;
-MSwim_dz=Vc*Mp3;
+MSwim_dx=Vc*Mp1-Vsmax*Mp1p3;
+MSwim_dz=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-Vsmax*Mp3sq;
 
 %% Initial Condition
 if ti==0
@@ -99,7 +99,9 @@ for i = 1:nsteps
     dxu_coeff=ucoeff*Rdx;
     dzu_coeff=ucoeff*Rdz;
     
-    adv_coeff=curl_profile.*(Mvor*ucoeff)+E_profile.*(Mstrain*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=curl_profile.*(Mvor*ucoeff)+E_profile.*(Mstrain*ucoeff)...
+        +Mgyro*ucoeff...
+        +Minert*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     lap_coeff=Mlap*ucoeff;
     lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
@@ -129,7 +131,9 @@ for i = 1:nsteps
     dxu_coeff=ucoeff*Rdx;
     dzu_coeff=ucoeff*Rdz;
     
-    adv_coeff=curl_profile.*(Mvor*ucoeff)+E_profile.*(Mstrain*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=curl_profile.*(Mvor*ucoeff)+E_profile.*(Mstrain*ucoeff)...
+        +Mgyro*ucoeff...
+        +Minert*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     lap_coeff=Mlap*ucoeff;
     lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
@@ -160,7 +164,9 @@ for i = 1:nsteps
     dxu_coeff=ucoeff*Rdx;
     dzu_coeff=ucoeff*Rdz;
 
-    adv_coeff=curl_profile.*(Mvor*ucoeff)+E_profile.*(Mstrain*ucoeff)+Mgyro*ucoeff;
+    adv_coeff=curl_profile.*(Mvor*ucoeff)+E_profile.*(Mstrain*ucoeff)...
+        +Mgyro*ucoeff...
+        +Minert*ucoeff;
     adv_coeff=adv_coeff-Mint'*(Mint*adv_coeff)/MintSq;
     lap_coeff=Mlap*ucoeff;
     lap_coeff=lap_coeff-Mint'*(Mint*lap_coeff)/MintSq;
