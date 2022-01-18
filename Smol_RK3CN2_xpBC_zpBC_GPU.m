@@ -76,7 +76,7 @@ if ti==0
     f_init(m*n/2+m/2+1,:)=int_const/4/pi;
     ucoeff0=gather(f_init)*reshape(ones(Nx_mesh,Nz_mesh)/4,1,[]);
 else
-    load(['t' num2str(ti) '.mat'],'ucoeff_t');
+    load(['./2D_run/t' num2str(ti) '.mat'],'ucoeff_t');
     ucoeff0=ucoeff_t;
 end
 
@@ -90,7 +90,7 @@ adv_comb_coeff=gpuArray(complex(zeros(n*m,Nx_mesh*Nz_mesh)));
 ucoeff_previous=gpuArray(complex(NaN(n*m,Nx_mesh*Nz_mesh,3)));
 % ucoeff_previous2=gpuArray(complex(NaN(n*m,N_mesh,3)));
 
-    cell_den_loc=(Mint*ucoeff*2*pi);
+    cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc)*dx*dz;
 
 for i = 1:nsteps
@@ -123,7 +123,7 @@ for i = 1:nsteps
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,Nx_mesh*Nz_mesh),[2 1 3]),helm.n*helm.m,Nx_mesh*Nz_mesh);
     
-    cell_den_loc=(Mint*ucoeff*2*pi);
+    cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc)*dx*dz;
     
     %% RK step 2
@@ -155,7 +155,7 @@ for i = 1:nsteps
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,Nx_mesh*Nz_mesh),[2 1 3]),helm.n*helm.m,Nx_mesh*Nz_mesh);
     
-    cell_den_loc=(Mint*ucoeff*2*pi);
+    cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc)*dx*dz;
     
     %% RK step 3
@@ -188,7 +188,7 @@ for i = 1:nsteps
 
     ucoeff=reshape(permute(reshape(CFS,helm.m,helm.n,Nx_mesh*Nz_mesh),[2 1 3]),helm.n*helm.m,Nx_mesh*Nz_mesh);
     
-    cell_den_loc=(Mint*ucoeff*2*pi);
+    cell_den_loc=real(Mint*ucoeff*2*pi);
     Nint_loc=sum(cell_den_loc)*dx*dz;
     
     %% Saving for Post-Processing    
@@ -197,7 +197,7 @@ for i = 1:nsteps
     if ( mod(i, saving_rate1) == 0 )
         ucoeff_t=gather(ucoeff);
 	t=i*dt+ti;
-	save(['t' num2str(t) '.mat'],'ucoeff_t','t','Mint','x','z','-v7.3');
+	save(['./2D_run/t' num2str(t) '.mat'],'ucoeff_t','t','Mint','x','z','-v7.3');
     end
     % Saving Cell Density
      if ( mod(i, saving_rate3) == 0 )

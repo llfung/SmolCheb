@@ -145,14 +145,18 @@ Rd2z=gpuArray(kron(Rd2,speye(Nz_mesh)));
 Mp1 = kron(spdiags(.5i*ones(n,1)*[-1,1], [-1 1], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
 %p3
 Mp3 = kron(spdiags(.5 *ones(n,1)*[ 1,1], [-1 1], n, n),speye(m));
+%p1p3
+Mp1p3 = kron(spdiags(.25i*ones(n,1)*[-1,1], [-2 2], n, n),spdiags(.5*ones(m,1)*[1,1], [-1 1], m, m));
+%p3p3
+Mp3sq= kron(spdiags(ones(n,1)*[.25,.5,.25], [-2 0 2], n, n),speye(m));
 
 %% Call Run Script
 Smol_RK3CN2_xpBC_zpBC_GPU;
 
 %% Final PS
-t1=(dt*saving_rate1:dt*saving_rate1:tfinal)+ti;
-t2=dt*saving_rate2:dt*saving_rate2:tfinal;
-t3=(dt*saving_rate3:dt*saving_rate3:tfinal)+ti;
+t1=(dt*saving_rate1:dt*saving_rate1:(tfinal-ti))+ti;
+t2=(dt*saving_rate2:dt*saving_rate2:(tfinal-ti))+ti;
+t3=(dt*saving_rate3:dt*saving_rate3:(tfinal-ti))+ti;
 
 Nint=gather(Nint_loc);
 int_const=gather(int_const);
@@ -171,7 +175,7 @@ E_profile=gather(E_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
 
-ex_file_name=['smol_pBC_conv_' num2str(beta) 'beta_' num2str(AR) 'AR_' num2str(Vc) 'Vc_' num2str(Vs) 'Vs_' num2str(1/nu) 'nu_' num2str(DT) 'DT_'  num2str(Pef) 'Pef_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_ti' num2str(ti) '_tf' num2str(tfinal)];
+ex_file_name=['smol_pBC_conv_' num2str(beta) 'beta_' num2str(AR) 'AR_' num2str(Vc) 'Vc_' num2str(Vs) 'Vs_' num2str(1/inv_nu) 'nu_' num2str(DT) 'DT_'  num2str(Pef) 'Pef_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_ti' num2str(ti) '_tf' num2str(tfinal)];
 
 save([ex_file_name '.mat'],...
     'Vc','Pef','AR','inv_nu','Vs',...
