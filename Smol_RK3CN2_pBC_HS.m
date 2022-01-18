@@ -34,7 +34,7 @@ MSwim=Vc*Mp3-Vsmin*speye(n*m)-Vsmax*Mp3sq;
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
 
-PS=PS_RunTime('z','inv',mats,settings,saving_rate1,saving_rate2);
+% PS=PS_RunTime('z','inv',mats,settings,saving_rate1,saving_rate2);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=ucoeff0;
@@ -125,7 +125,7 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing    
     % Saving full Psi and it time derivative
-    PS=PS.RunTimeCall(ucoeff,i);
+%     PS=PS.RunTimeCall(ucoeff,i);
     
     % Saving Cell Density
     if ( mod(i, saving_rate3) == 0 )

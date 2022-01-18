@@ -23,8 +23,8 @@ MintSq=settings.MintSq;
 
 Kp=settings.Kp;
 
-mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
-    'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x);
+% mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
+%     'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x);
 
 helm=helmholtz_gen( n, m);
 
@@ -34,7 +34,7 @@ MSwim=Vc*Mp1-Vsmax*Mp1p3;
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
 
-PS=PS_RunTime('x','inv',mats,settings,saving_rate1,saving_rate2);
+% PS=PS_RunTime('x','inv',mats,settings,saving_rate1,saving_rate2);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=ucoeff0;
@@ -128,7 +128,7 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing    
     % Saving full Psi and it time derivative
-    PS=PS.RunTimeCall(ucoeff,i);
+%     PS=PS.RunTimeCall(ucoeff,i);
 %     if ( mod(i, saving_rate2) == 0 )
 %         ufull_save=ucoeff;
 %         t=i*dt;

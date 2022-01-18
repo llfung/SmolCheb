@@ -79,7 +79,7 @@ mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
 
 % PS=PS_RunTime('z','inv',mats,settings_CPU,saving_rate1,saving_rate2);
-PS=PS_RunTime('z','invGPU_w_fdt',mats,settings,saving_rate1,saving_rate2);
+% PS=PS_RunTime('z','invGPU_w_fdt',mats,settings,saving_rate1,saving_rate2);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
@@ -200,7 +200,7 @@ for i = 1:nsteps
     
     %% Saving for Post-Processing    
     % Saving full Psi and it time derivative
-    PS=PS.RunTimeCall(ucoeff,i);
+%     PS=PS.RunTimeCall(ucoeff,i);
     
     % Saving Cell Density
     if ( mod(i, saving_rate3) == 0 )
