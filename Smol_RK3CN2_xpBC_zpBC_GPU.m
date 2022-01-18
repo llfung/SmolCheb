@@ -67,8 +67,8 @@ Mp1 = gpuArray(complex(Mp1));
 Mp3 = gpuArray(complex(Mp3));
 
 %Swimming and sedimentation
-MSwim_dx=Vc*Mp1-Vsmax*Mp1p3;
-MSwim_dz=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-Vsmax*Mp3sq;
+MSwim_dx=Vc*Mp1-(Vsmax-Vsmin)*Mp1p3;
+MSwim_dz=Vc*Mp3-Vsmin*gpuArray(speye(n*m))-(Vsmax-Vsmin)*Mp3sq;
 
 %% Initial Condition
 if ti==0

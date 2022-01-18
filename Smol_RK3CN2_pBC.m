@@ -29,7 +29,7 @@ Kp=settings.Kp;
 helm=helmholtz_gen( n, m);
 
 %Swimming and sedimentation   
-MSwim=Vc*Mp1-Vsmax*Mp1p3;
+MSwim=Vc*Mp1-(Vsmax-Vsmin)*Mp1p3;
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);

@@ -70,7 +70,7 @@ Mp3 = gpuArray(complex(Mp3));
 Mp1p3 =  gpuArray(complex(Mp1p3));
 
 %Swimming and sedimentation   
-MSwim=Vc*Mp1-Vsmax*Mp1p3;
+MSwim=Vc*Mp1-(Vsmax-Vsmin)*Mp1p3;
 
 mats=struct('Mint',settings.Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',Mlap,...
     'Mp1',Mp1,'Mp3',Mp3,'Rdx',Rdx,'Rd2x',Rd2x);  % If GPU PS is used.

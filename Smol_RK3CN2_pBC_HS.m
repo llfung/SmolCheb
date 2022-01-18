@@ -29,7 +29,7 @@ mats=struct('Mint',Mint,'S_profile',S_profile,'Mvor',Mvor,'Mgyro',Mgyro,'Mlap',M
 helm=helmholtz_gen( n, m);
 
 %Swimming and sedimentation
-MSwim=Vc*Mp3-Vsmin*speye(n*m)-Vsmax*Mp3sq;
+MSwim=Vc*Mp3-Vsmin*speye(n*m)-(Vsmax-Vsmin)*Mp3sq;
 
 %% Initialise Recorded values
 cell_den=NaN(floor(nsteps/saving_rate3),N_mesh);
