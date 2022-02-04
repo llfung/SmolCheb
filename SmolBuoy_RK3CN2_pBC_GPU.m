@@ -98,7 +98,6 @@ W_prof=NaN(floor(nsteps/saving_rate3),N_mesh);
 
 %% Time-Stepping (RK3-CN2)
 ucoeff=gpuArray(complex(ucoeff0));
-W_profile0=W_profile;
 W_profile=gpuArray(W_profile);
 adv_p_coeff     =gpuArray(complex(zeros(n*m,N_mesh)));
 adv_comb_coeff  =gpuArray(complex(zeros(n*m,N_mesh)));

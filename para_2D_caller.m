@@ -175,8 +175,7 @@ E_profile=gather(E_profile);
 Kp=gather(Kp);
 ucoeff=gather(ucoeff);
 
-ex_file_name=['smol_pBC_conv_' num2str(beta) 'beta_' num2str(AR) 'AR_' num2str(Vc) 'Vc_' num2str(Vs) 'Vs_' num2str(1/inv_nu) 'nu_' num2str(DT) 'DT_'  num2str(Pef) 'Pef_dx_' num2str(Nx_mesh) 'dz_' num2str(Nz_mesh) '_m' num2str(m) '_n' num2str(n) '_dt' num2str(dt) '_ti' num2str(ti) '_tf' num2str(tfinal)];
-
+ex_file_name=['smol_pBC_conv_' num2str(beta) 'beta_'  num2str(DT) 'DT_' num2str(Vc) 'Vc_' num2str(AR) 'AR_' num2str(B) 'B_' num2str(M) 'M_' num2str(Vs) 'Vs_'  num2str(1/inv_nu) 'nu_' num2str(Pef) 'Pef_cospi_' num2str(N_mesh) 'cd_' num2str(m) 'm_' num2str(n) 'n_' num2str(dt) 'dt_' num2str(ti) 'ti_' num2str(tfinal) 'tf' ];
 save([ex_file_name '.mat'],...
     'Vc','Pef','AR','inv_nu','Vs',...
     'diff_const','beta','DT',...
