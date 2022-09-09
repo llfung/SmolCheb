@@ -206,5 +206,9 @@ for i = 1:nsteps
     if ( mod(i, saving_rate3) == 0 )
         cell_den(i/saving_rate3,:)=gather(cell_den_loc);
         disp([num2str(i) '/' num2str(nsteps)]);
+        if any(isnan(cell_den(i/saving_rate3,:)))
+            disp('NaN detected in cell_den');
+            break;
+        end
     end    
 end
