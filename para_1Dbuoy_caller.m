@@ -1,6 +1,6 @@
 %% Parameters and Environment setting
 % Caller Script for Smol_RK3CN2 solvers
-gpuArray(2);
+%gpuArray(2);
 %% Environmental set up
 addpath(genpath('core'))
 addpath(genpath('core/x_FD'))
@@ -18,26 +18,28 @@ clear all;
 %% Parameters
 % Numericals
 Vc=0;                   % Swimming Speed (scaled by channel width and Dr) (Pe_s)
-Pef=0.1582086;                    % Flow Peclet Number (Pe_f)
-inv_nu=6.3207673579;                % h*^2 dr^* / (kinematic viscosity)
-Vs=0.079795642;                   % Sedimentation speed scaling (delta rho g / mu *(2/9) * b^2 / (h^*dr^*), b=semi-minor
+Pef=1;                    % Flow Peclet Number (Pe_f)
+inv_nu=1;                % h*^2 dr^* / (kinematic viscosity)
+Vs=1;                   % Sedimentation speed scaling (delta rho g / mu *(2/9) * b^2 / (h^*dr^*), b=semi-minor
 
-Ri=5;
+Ri=50;
 Re=inv_nu;
 
 diff_const = 1;            % Rotational Diffusion constant (keep it at 1, for dimensional runs only)
 DT=0.;                     % Translational Diffusion constant
 beta=0;                    % Gyrotactic time scale
 AR=10;                     % Aspect Ratio of swimmer (1=spherical) % AR=1.3778790674938353091971374518539773339097820167847;
-[B,Vmin,Vmax,M]=ellipsoid(AR);
-% B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
-Vsmin=Vs*Vmin;              % Minimum sedimentaion (Vs)
-Vsmax=Vs*Vmax;              % Vs_max-Vs_min
-
+%[B,Vmin,Vmax,M]=ellipsoid(AR);
+M=0;
+B=0.31;                    % Bretherton Constant of swimmer (a.k.a. alpha0, direct)
+% Vsmin=Vs*Vmin;              % Minimum sedimentaion (Vs)
+% Vsmax=Vs*Vmax;              % Vs_max-Vs_min
+Vsmin=0;
+Vsmax=1;
 % Discretisation
-dt = 0.002;                  % Time step
+dt = 0.05;                  % Time step
 ti = 0;
-tfinal = 50+dt*2;          % Stopping time
+tfinal = 20+dt*2;          % Stopping time
 nsteps = ceil((tfinal-ti)/dt);   % Number of time steps
 m = 16;                     % Spherical discretization - phi (even)
 n = 32;                     % Spherical discretization - theta (even)
@@ -45,9 +47,9 @@ N_mesh=128;                 % Spatial discretization - x/z
 channel_width=2.;           % Rotational Diffusion constant (keep it at 2, for dimensional runs only)
 
 % Run settings
-saving_rate1=100;
+saving_rate1=20;
 saving_rate2=Inf;
-saving_rate3=100;
+saving_rate3=20;
 
 % Others
 int_const=1.;
@@ -143,8 +145,8 @@ end
 % ucoeff0(m*n/2+m/2+1,:)=(1/4/pi)*norm_distr;
 
 %% Call Run Script
-% SmolBuoy_RK3CN2_pBC;
-SmolBuoy_RK3CN2_pBC_GPU;
+ SmolBuoy_RK3CN2_pBC;
+%SmolBuoy_RK3CN2_pBC_GPU;
 
 %% Final PS
 t1=(dt*saving_rate1:dt*saving_rate1:(tfinal-ti))+ti;
