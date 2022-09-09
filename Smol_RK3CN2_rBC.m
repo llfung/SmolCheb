@@ -106,7 +106,7 @@ for i = 1:nsteps
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
     end
     cell_den_loc=real(Mint*ucoeff*2*pi);
-    Nint_loc=cheb.cheb_int(cell_den_loc');
+    Nint_loc=sum(cell_den_loc,2)*dx;
     
     %% RK step 2
     k=2;
@@ -149,7 +149,7 @@ for i = 1:nsteps
         ucoeff(:,j) = helmholtz_cal(rhs_coeff, -K2/alpha(k),helm);
     end
     cell_den_loc=real(Mint*ucoeff*2*pi);
-    Nint_loc=cheb.cheb_int(cell_den_loc');
+    Nint_loc=sum(cell_den_loc,2)*dx;
     
     %% RK step 3
     k=3;
@@ -193,7 +193,7 @@ for i = 1:nsteps
         
     end
     cell_den_loc=real(Mint*ucoeff*2*pi);
-    Nint_loc=cheb.cheb_int(cell_den_loc');
+    Nint_loc=sum(cell_den_loc,2)*dx;
     
     %% Saving for Post-Processing    
     % Saving full Psi and it time derivative
