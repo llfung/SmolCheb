@@ -2,17 +2,17 @@ function [B,Vmin,Vmax,M]=ellipsoid(AR)
     B=(AR.^2-1)./(AR.^2+1); 
     if nargout>1
         % Kim's version - more prone to numerical problem at high AR
-        %         e=sqrt(1-1./AR.^2);
-        %         L=log((1+e)./(1-e));
-        %         XA=8/3*e.^3./(-2*e+(1+e.^2).*L);
-        %         YA=16/3*e.^3./(2*e+(3*e.^2-1).*L);
+%                 e=sqrt(1-1./AR.^2);
+%                 L=log((1+e)./(1-e));
+%                  Vmax=1./(8/3*e.^3./(-2*e+(1+e.^2).*L))./AR;
+%                  Vmin=1./(16/3*e.^3./(2*e+(3*e.^2-1).*L))./AR;
                 
         % Modified Cabrera et al. (2021) Appendix A version
         alpha=AR.^2./(AR.^2-1)-AR.*acosh(AR).*(sqrt(AR.^2-1).^(-3));
         chi=2*AR.*acosh(AR)./sqrt(AR.^2-1);
         gamma=-2./(AR.^2-1)+2*AR.*acosh(AR).*(sqrt(AR.^2-1).^(-3));
-        Vmax=(chi+AR.^2.*gamma)*3/8;
-        Vmin=(chi+alpha)*3/8;
+        Vmax=(chi+AR.^2.*gamma)*3/8./AR;
+        Vmin=(chi+alpha)*3/8./AR;
     end
     if nargout>3
         e=sqrt(1-1./AR.^2);
