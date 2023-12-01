@@ -1,4 +1,4 @@
-function [B,Vmin,Vmax,M]=ellipsoid(AR)
+function [B,Vmin,Vmax,M,A1,A2,A3]=ellipsoid(AR)
     B=(AR.^2-1)./(AR.^2+1); 
     if nargout>1
         % Kim's version - more prone to numerical problem at high AR
@@ -24,5 +24,11 @@ function [B,Vmin,Vmax,M]=ellipsoid(AR)
         M=3/16/pi*AR.^4./(AR.^4-1).*(-1+(-1+2*AR.^2)./(AR.*sqrt(-1+AR.^2))...
             .*log(AR+sqrt(-1+AR.^2))).*F;
 
+    end
+    if nargout>4
+        xi=1/sqrt(1 - AR^-2);
+    	A1 = -16*pi / ( 9*xi^3* (-3*xi + acoth(xi)*(-1 + 3*xi^2)) );
+    	A2 =  16*pi * (-1 + xi^2) / (3*xi^2 *(-1 + 2*xi^2) * (2 - 3*xi^2 + (3*acoth(xi)) *xi *(-1 + xi^2)));
+    	A3 = -32*pi * (-1 + xi^2) / (3*xi^3 *(5*xi - 3*xi^3 + (3*acoth(xi)) *(-1 + xi^2)^2));
     end
 end
