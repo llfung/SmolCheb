@@ -30,12 +30,12 @@ M=0;
 Vsmin=Vs*Vmin;              % Minimum sedimentaion (Vs)
 Vsmax=Vs*Vmax;              % Vs_max-Vs_min
 
-h=4;
-H=5;
+h=29;
+H=30;
 
 % Discretisation
-m = 16;                     % Spherical discretization - phi (even)
-n = 128;                     % Spherical discretization - theta (even)
+m = 32;                     % Spherical discretization - phi (even)
+n = 320;                     % Spherical discretization - theta (even)
 
 %% Flow Config
 % Vertical Shear (VS)
@@ -116,6 +116,9 @@ Le(n*m/2+m/2+1,:)=Mint;
 
 g=Le\[zeros(n*m/2+m/2,1);1/2/pi;zeros(n*m/2-m/2-1,1)];
 
+LJeff = full(gather(S_profile(j)*(Mvor)-Mlap));
+LJeff(n*m/2+m/2+1,:)=Mint;
+gJeff = LJeff\[zeros(n*m/2+m/2,1);1/2/pi;zeros(n*m/2-m/2-1,1)];
 % N_mesh=numel(S_profile);
 % nm=n*m;
 % g=NaN(nm,N_mesh);
@@ -139,8 +142,8 @@ g=Le\[zeros(n*m/2+m/2,1);1/2/pi;zeros(n*m/2-m/2-1,1)];
 %%
 u=spherefun.coeffs2spherefun(transpose(reshape(g,m,n)));
 % u_relax=spherefun.coeffs2spherefun(transpose(reshape(g_relax,m,n)));
-
-n_phi=32; % Has to be even for FFT. 2^N recommended
+uJeff = spherefun.coeffs2spherefun(transpose(reshape(gJeff,m,n)));
+n_phi=128; % Has to be even for FFT. 2^N recommended
 n_theta=101; % Had better to be 1+(multiples of 5,4,3 or 2) for Newton-Cot
 
  
@@ -157,3 +160,7 @@ contour(phi/pi,theta/pi,u(phi,theta));%axis equal;
 subplot(1,2,2);
 % contour(phi/pi,theta/pi,u_relax(phi,theta));axis equal;
 plot(mean(u(phi,theta),2),theta/pi);
+hold on;
+plot(mean(uJeff(phi,theta),2),theta/pi);
+hold off;
+legend('With Wall','Jeffrey Only')
